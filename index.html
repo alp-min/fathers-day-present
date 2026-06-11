@@ -1,0 +1,1467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Law Internship Tracker 2027</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy: #0f1f3d;
+      --navy-mid: #1a3260;
+      --navy-light: #243d75;
+      --gold: #c9a84c;
+      --gold-light: #e8c96e;
+      --cream: #faf8f3;
+      --cream-dark: #f0ece0;
+      --text: #1a1a2e;
+      --text-muted: #5a5a7a;
+      --white: #ffffff;
+      --green: #2d7a4f;
+      --green-light: #e8f5ee;
+      --red: #c0392b;
+      --red-light: #fdecea;
+      --orange: #d68a1a;
+      --orange-light: #fff3e0;
+      --blue: #1a6fa8;
+      --blue-light: #e3f0fa;
+      --purple: #6b3fa0;
+      --purple-light: #f3eeff;
+      --shadow: 0 2px 12px rgba(15,31,61,0.10);
+      --shadow-lg: 0 8px 32px rgba(15,31,61,0.15);
+    }
+
+    body {
+      font-family: 'Georgia', 'Times New Roman', serif;
+      background: var(--cream);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    .header {
+      background: var(--navy);
+      color: var(--white);
+      padding: 0 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 64px;
+      box-shadow: var(--shadow-lg);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .header-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .header-logo {
+      width: 36px;
+      height: 36px;
+      background: var(--gold);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+    .header-title {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      color: var(--white);
+    }
+    .header-subtitle {
+      font-size: 11px;
+      color: var(--gold-light);
+      font-family: sans-serif;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .header-nav {
+      display: flex;
+      gap: 4px;
+    }
+    .nav-btn {
+      background: none;
+      border: none;
+      color: rgba(255,255,255,0.7);
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.15s;
+      letter-spacing: 0.3px;
+    }
+    .nav-btn:hover { background: rgba(255,255,255,0.1); color: var(--white); }
+    .nav-btn.active { background: var(--gold); color: var(--navy); font-weight: 700; }
+
+    /* ── Layout ── */
+    .main { max-width: 1280px; margin: 0 auto; padding: 28px 24px; }
+
+    /* ── Stats Bar ── */
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+    .stat-card {
+      background: var(--white);
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: var(--shadow);
+      border-top: 3px solid var(--gold);
+      text-align: center;
+    }
+    .stat-card.green { border-top-color: var(--green); }
+    .stat-card.blue { border-top-color: var(--blue); }
+    .stat-card.orange { border-top-color: var(--orange); }
+    .stat-card.purple { border-top-color: var(--purple); }
+    .stat-card.red { border-top-color: var(--red); }
+    .stat-num {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--navy);
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+    .stat-label {
+      font-family: sans-serif;
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+
+    /* ── Progress Bar ── */
+    .progress-section {
+      background: var(--white);
+      border-radius: 12px;
+      padding: 16px 20px;
+      box-shadow: var(--shadow);
+      margin-bottom: 28px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .progress-label {
+      font-family: sans-serif;
+      font-size: 12px;
+      color: var(--text-muted);
+      white-space: nowrap;
+      min-width: 140px;
+    }
+    .progress-track {
+      flex: 1;
+      height: 10px;
+      background: var(--cream-dark);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--gold) 0%, var(--green) 100%);
+      border-radius: 99px;
+      transition: width 0.4s ease;
+    }
+    .progress-pct {
+      font-family: sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--navy);
+      min-width: 40px;
+      text-align: right;
+    }
+
+    /* ── Firm Tracker Table ── */
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .section-title {
+      font-size: 20px;
+      color: var(--navy);
+      font-weight: 700;
+    }
+    .filter-bar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .filter-chip {
+      background: none;
+      border: 1.5px solid var(--cream-dark);
+      padding: 6px 14px;
+      border-radius: 99px;
+      font-family: sans-serif;
+      font-size: 12px;
+      cursor: pointer;
+      color: var(--text-muted);
+      transition: all 0.15s;
+    }
+    .filter-chip:hover { border-color: var(--gold); color: var(--navy); }
+    .filter-chip.active { background: var(--navy); border-color: var(--navy); color: var(--white); }
+
+    .tracker-table {
+      background: var(--white);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .tracker-table table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .tracker-table thead {
+      background: var(--navy);
+      color: var(--white);
+    }
+    .tracker-table th {
+      padding: 12px 16px;
+      text-align: left;
+      font-family: sans-serif;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .tracker-table td {
+      padding: 11px 16px;
+      border-bottom: 1px solid var(--cream-dark);
+      font-family: sans-serif;
+      font-size: 13px;
+      vertical-align: middle;
+    }
+    .tracker-table tr:last-child td { border-bottom: none; }
+    .tracker-table tbody tr:hover { background: var(--cream); }
+    .tracker-table tbody tr.completed { opacity: 0.5; }
+    .tracker-table tbody tr.completed td { text-decoration: line-through; }
+    .tracker-table tbody tr.completed td.no-strike { text-decoration: none; }
+
+    .firm-name { font-weight: 600; color: var(--navy); font-size: 13px; }
+    .firm-type {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+    .firm-type.magic { background: #fff0cc; color: #8a6000; }
+    .firm-type.silver { background: #e8eaf6; color: #3949ab; }
+    .firm-type.us { background: #fce4ec; color: #c62828; }
+    .firm-type.other { background: #e8f5e9; color: #2e7d32; }
+
+    .date-cell { color: var(--text-muted); white-space: nowrap; }
+    .date-cell.urgent { color: var(--red); font-weight: 600; }
+    .date-cell.soon { color: var(--orange); font-weight: 600; }
+
+    .stage-select {
+      border: 1.5px solid var(--cream-dark);
+      border-radius: 6px;
+      padding: 5px 10px;
+      font-family: sans-serif;
+      font-size: 12px;
+      cursor: pointer;
+      background: var(--cream);
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.15s;
+      min-width: 155px;
+    }
+    .stage-select:focus { border-color: var(--gold); }
+    .stage-select.stage-not-started { background: var(--cream); }
+    .stage-select.stage-researching { background: #e3f0fa; color: var(--blue); }
+    .stage-select.stage-applied { background: #fff3e0; color: var(--orange); }
+    .stage-select.stage-online-test { background: #f3eeff; color: var(--purple); }
+    .stage-select.stage-first-interview { background: #e3f0fa; color: #0d47a1; }
+    .stage-select.stage-second-interview { background: #e8f5ee; color: var(--green); }
+    .stage-select.stage-ac { background: #fce4ec; color: #880e4f; }
+    .stage-select.stage-offer { background: #e8f5ee; color: var(--green); font-weight: 700; }
+    .stage-select.stage-rejected { background: var(--red-light); color: var(--red); }
+    .stage-select.stage-withdrawn { background: var(--cream-dark); color: var(--text-muted); }
+
+    .complete-btn {
+      background: none;
+      border: 1.5px solid var(--cream-dark);
+      border-radius: 6px;
+      padding: 5px 10px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: all 0.15s;
+      color: var(--text-muted);
+    }
+    .complete-btn:hover { border-color: var(--green); background: var(--green-light); }
+    .complete-btn.done { border-color: var(--green); background: var(--green-light); color: var(--green); }
+
+    .notes-input {
+      border: 1.5px solid var(--cream-dark);
+      border-radius: 6px;
+      padding: 5px 8px;
+      font-family: sans-serif;
+      font-size: 12px;
+      background: var(--cream);
+      color: var(--text);
+      outline: none;
+      width: 140px;
+      transition: border-color 0.15s;
+    }
+    .notes-input:focus { border-color: var(--gold); }
+
+    /* ── Calendar ── */
+    .calendar-wrapper {
+      background: var(--white);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .calendar-header {
+      background: var(--navy);
+      color: var(--white);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .cal-nav-btn {
+      background: rgba(255,255,255,0.15);
+      border: none;
+      color: white;
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s;
+    }
+    .cal-nav-btn:hover { background: rgba(255,255,255,0.25); }
+    .cal-month-title { font-size: 18px; font-weight: 700; }
+    .cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+    }
+    .cal-dow {
+      padding: 10px 4px;
+      text-align: center;
+      font-family: sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      border-bottom: 2px solid var(--cream-dark);
+    }
+    .cal-cell {
+      min-height: 90px;
+      padding: 6px;
+      border-right: 1px solid var(--cream-dark);
+      border-bottom: 1px solid var(--cream-dark);
+      position: relative;
+    }
+    .cal-cell:nth-child(7n) { border-right: none; }
+    .cal-cell.other-month { background: var(--cream); }
+    .cal-cell.today { background: #fffbe6; }
+    .cal-day-num {
+      font-family: sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+    .cal-cell.today .cal-day-num {
+      background: var(--gold);
+      color: var(--navy);
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .cal-event {
+      font-family: sans-serif;
+      font-size: 10px;
+      padding: 2px 5px;
+      border-radius: 4px;
+      margin-bottom: 2px;
+      cursor: pointer;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      transition: opacity 0.15s;
+    }
+    .cal-event:hover { opacity: 0.8; }
+    .cal-event.opens { background: #e3f0fa; color: #0d47a1; border-left: 3px solid #0d47a1; }
+    .cal-event.closes { background: #fce4ec; color: #c62828; border-left: 3px solid #c62828; }
+    .cal-event.done-event { opacity: 0.4; text-decoration: line-through; }
+
+    /* ── Timeline ── */
+    .timeline-container {
+      background: var(--white);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+      padding: 24px;
+    }
+    .timeline-item {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 0;
+    }
+    .timeline-left {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 40px;
+    }
+    .timeline-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--gold);
+      border: 3px solid var(--white);
+      box-shadow: 0 0 0 2px var(--gold);
+      flex-shrink: 0;
+      z-index: 1;
+    }
+    .timeline-dot.closes { background: var(--red); box-shadow: 0 0 0 2px var(--red); }
+    .timeline-dot.past { background: var(--text-muted); box-shadow: 0 0 0 2px var(--text-muted); }
+    .timeline-line {
+      width: 2px;
+      flex: 1;
+      background: var(--cream-dark);
+      margin: 4px 0;
+    }
+    .timeline-content {
+      padding-bottom: 20px;
+      flex: 1;
+    }
+    .timeline-date {
+      font-family: sans-serif;
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+    .timeline-card {
+      background: var(--cream);
+      border-radius: 8px;
+      padding: 10px 14px;
+      border-left: 3px solid var(--gold);
+    }
+    .timeline-card.closes { border-left-color: var(--red); }
+    .timeline-firm { font-weight: 700; font-size: 13px; color: var(--navy); }
+    .timeline-detail { font-family: sans-serif; font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+    /* ── Tooltip / Modal ── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15,31,61,0.5);
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal {
+      background: var(--white);
+      border-radius: 14px;
+      padding: 28px;
+      max-width: 480px;
+      width: 90%;
+      box-shadow: var(--shadow-lg);
+    }
+    .modal-title { font-size: 20px; font-weight: 700; color: var(--navy); margin-bottom: 16px; }
+    .modal-close {
+      float: right;
+      background: none;
+      border: none;
+      font-size: 22px;
+      cursor: pointer;
+      color: var(--text-muted);
+      margin-top: -4px;
+    }
+    .modal-row { display: flex; gap: 8px; align-items: baseline; margin-bottom: 8px; }
+    .modal-key { font-family: sans-serif; font-size: 12px; color: var(--text-muted); min-width: 100px; }
+    .modal-val { font-family: sans-serif; font-size: 13px; color: var(--text); font-weight: 500; }
+
+    /* ── Misc ── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--red);
+      color: white;
+      font-family: sans-serif;
+      font-size: 10px;
+      font-weight: 700;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      margin-left: 6px;
+    }
+    .empty-state {
+      text-align: center;
+      padding: 48px;
+      color: var(--text-muted);
+      font-family: sans-serif;
+    }
+    .empty-state .icon { font-size: 40px; margin-bottom: 12px; }
+    .search-input {
+      border: 1.5px solid var(--cream-dark);
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-family: sans-serif;
+      font-size: 13px;
+      outline: none;
+      background: var(--white);
+      color: var(--text);
+      transition: border-color 0.15s;
+      width: 220px;
+    }
+    .search-input:focus { border-color: var(--gold); }
+
+    @media (max-width: 900px) {
+      .stats-bar { grid-template-columns: repeat(3, 1fr); }
+      .header-nav { display: none; }
+    }
+    @media (max-width: 600px) {
+      .stats-bar { grid-template-columns: repeat(2, 1fr); }
+      .main { padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useMemo, useEffect } = React;
+
+/* ─────────────────────────────────────────────
+   DATA
+───────────────────────────────────────────── */
+const STAGES = [
+  { value: 'not-started',      label: 'Not Started',        cls: 'stage-not-started' },
+  { value: 'researching',      label: 'Researching',         cls: 'stage-researching' },
+  { value: 'applied',          label: 'Applied',             cls: 'stage-applied' },
+  { value: 'online-test',      label: 'Online Test',         cls: 'stage-online-test' },
+  { value: 'first-interview',  label: 'First Interview',     cls: 'stage-first-interview' },
+  { value: 'second-interview', label: 'Second Interview',    cls: 'stage-second-interview' },
+  { value: 'ac',               label: 'Assessment Centre',   cls: 'stage-ac' },
+  { value: 'offer',            label: '🎉 Offer Received',   cls: 'stage-offer' },
+  { value: 'rejected',         label: 'Rejected',            cls: 'stage-rejected' },
+  { value: 'withdrawn',        label: 'Withdrawn',           cls: 'stage-withdrawn' },
+];
+
+const FIRMS = [
+  // Magic Circle
+  {
+    id: 1, name: 'Clifford Chance', type: 'magic', typeLabel: 'Magic Circle',
+    program: 'SPARK Development Programme',
+    opens: '2026-09-01', closes: '2026-10-31',
+    duration: '9 months (part-time)', stipend: '£500/week',
+    location: 'London',
+    notes_default: '',
+    url: 'https://jobs.cliffordchance.com/spark',
+    firstYear: true,
+    description: 'First-year focused development programme combining work experience and virtual content.'
+  },
+  {
+    id: 2, name: 'A&O Shearman', type: 'magic', typeLabel: 'Magic Circle',
+    program: 'Summer Vacation Scheme',
+    opens: '2026-09-15', closes: '2026-10-27',
+    duration: '2–3 weeks', stipend: '£500/week',
+    location: 'London', notes_default: '',
+    url: 'https://earlycareersuk.aoshearman.com/vacation-schemes',
+    firstYear: false,
+    description: 'Penultimate-year summer scheme. Gateway to training contract.'
+  },
+  {
+    id: 3, name: 'Freshfields', type: 'magic', typeLabel: 'Magic Circle',
+    program: 'Summer Vacation Scheme',
+    opens: '2026-09-01', closes: '2027-01-10',
+    duration: '3 weeks', stipend: '£515/week',
+    location: 'London', notes_default: '',
+    url: 'https://www.freshfields.com/en/your-career/united-kingdom/early-careers/vacation-schemes',
+    firstYear: false,
+    description: 'Two summer schemes available for penultimate-year undergraduates from any discipline.'
+  },
+  {
+    id: 4, name: 'Freshfields', type: 'magic', typeLabel: 'Magic Circle',
+    program: 'First-Year Insight Scheme',
+    opens: '2026-09-01', closes: '2026-11-30',
+    duration: '1 week', stipend: 'Paid',
+    location: 'London', notes_default: '',
+    url: 'https://www.freshfields.com/en/your-career/united-kingdom/early-careers/vacation-schemes',
+    firstYear: true,
+    description: 'Specifically for first-year law students to gain insight into commercial law practice.'
+  },
+  {
+    id: 5, name: 'Linklaters', type: 'magic', typeLabel: 'Magic Circle',
+    program: 'Summer Vacation Scheme',
+    opens: '2026-09-15', closes: '2027-01-31',
+    duration: '2 weeks', stipend: 'Competitive',
+    location: 'London', notes_default: '',
+    url: 'https://careers.linklaters.com/en/early-careers/university-and-graduate-opportunities/vacation-schemes',
+    firstYear: false,
+    description: 'Best route to a Linklaters training contract. Realistic insight into the trainee solicitor role.'
+  },
+  {
+    id: 6, name: 'Slaughter and May', type: 'magic', typeLabel: 'Magic Circle',
+    program: 'Summer Vacation Scheme',
+    opens: '2026-09-01', closes: '2027-01-05',
+    duration: '2 weeks', stipend: 'Competitive',
+    location: 'London', notes_default: '',
+    url: 'https://www.slaughterandmay.com/careers/early-careers/apply/',
+    firstYear: false,
+    description: 'Highly prestigious scheme; direct route to training contract interviews.'
+  },
+  // Silver Circle
+  {
+    id: 7, name: 'Herbert Smith Freehills', type: 'silver', typeLabel: 'Silver Circle',
+    program: 'First-Year Programme (BAME)',
+    opens: '2026-10-01', closes: '2027-01-28',
+    duration: '2 weeks', stipend: 'Paid',
+    location: 'London', notes_default: '',
+    url: 'https://careers.hsfkramer.com/global/en/uk/early-careers/vacation-schemes',
+    firstYear: true,
+    description: 'For Black and minority ethnic first-year university students.'
+  },
+  {
+    id: 8, name: 'Herbert Smith Freehills', type: 'silver', typeLabel: 'Silver Circle',
+    program: 'Summer Vacation Scheme',
+    opens: '2026-10-01', closes: '2027-01-31',
+    duration: '2 weeks', stipend: 'Paid',
+    location: 'London', notes_default: '',
+    url: 'https://careers.hsfkramer.com/global/en/uk/early-careers/vacation-schemes',
+    firstYear: false,
+    description: 'For penultimate-year, final-year students, and graduates.'
+  },
+  {
+    id: 9, name: 'Macfarlanes', type: 'silver', typeLabel: 'Silver Circle',
+    program: 'Summer Vacation Scheme',
+    opens: '2026-10-01', closes: '2026-12-05',
+    duration: '2 weeks', stipend: 'Competitive',
+    location: 'London', notes_default: '',
+    url: 'https://www.macfarlanes.com/join-us/early-careers/experience-macfarlanes/vacation-scheme/',
+    firstYear: false,
+    description: 'Boutique high-quality scheme at one of London\'s leading private client and corporate firms.'
+  },
+  {
+    id: 10, name: 'Travers Smith', type: 'silver', typeLabel: 'Silver Circle',
+    program: 'Summer Vacation Scheme',
+    opens: '2026-11-03', closes: '2027-01-14',
+    duration: '2 weeks', stipend: 'Competitive',
+    location: 'London', notes_default: '',
+    url: 'https://www.traverssmith.com/join-us/early-careers/application-process/',
+    firstYear: false,
+    description: 'Opens November; midday deadline. Strong corporate and private equity focus.'
+  },
+  {
+    id: 11, name: 'Ashurst', type: 'silver', typeLabel: 'Silver Circle',
+    program: 'Summer Vacation Scheme',
+    opens: '2026-09-01', closes: '2026-12-12',
+    duration: '2 weeks', stipend: 'Competitive',
+    location: 'London', notes_default: '',
+    url: 'https://www.ashurst.com/en/careers/students-and-graduates/uk-summer-vacation-scheme/',
+    firstYear: false,
+    description: 'International law firm with strong finance and M&A practices.'
+  },
+  {
+    id: 12, name: 'Hogan Lovells', type: 'silver', typeLabel: 'Silver Circle',
+    program: 'Summer Vacation Scheme',
+    opens: '2026-10-01', closes: '2027-01-31',
+    duration: '2 weeks', stipend: '£500/week',
+    location: 'London', notes_default: '',
+    url: 'https://www.hoganlovells.com/en/alumni/careers/training/trainee-solicitor-recruitment/summer-scheme',
+    firstYear: false,
+    description: 'International transactional and regulatory practice; gateway to training contract.'
+  },
+  {
+    id: 13, name: 'Norton Rose Fulbright', type: 'silver', typeLabel: 'Silver Circle',
+    program: 'Summer Vacation Scheme',
+    opens: '2026-09-01', closes: '2027-01-16',
+    duration: '2 weeks', stipend: '£500/week',
+    location: 'London', notes_default: '',
+    url: 'https://www.nortonrosefulbright.com/en-gb/careers/students-and-graduates/vacation-scheme',
+    firstYear: false,
+    description: 'Global law firm with offices across 50+ countries. Strong energy and finance practice.'
+  },
+  // US Firms
+  {
+    id: 14, name: 'Gibson Dunn', type: 'us', typeLabel: 'US Firm',
+    program: 'Summer Internship Programme',
+    opens: '2026-09-01', closes: '2026-12-01',
+    duration: '8 weeks', stipend: '£750/week',
+    location: 'London', notes_default: '',
+    url: 'https://www.gibsondunn.com/careers/law-students/',
+    firstYear: false,
+    description: 'One of the highest-paying schemes in London. Strong litigation and M&A practice.'
+  },
+  {
+    id: 15, name: 'Latham & Watkins', type: 'us', typeLabel: 'US Firm',
+    program: 'First-Year Spring Scheme',
+    opens: '2026-09-01', closes: '2026-11-30',
+    duration: '3 days', stipend: 'Paid',
+    location: 'London', notes_default: '',
+    url: 'https://www.lw.com/admin/Upload/Documents/Latham-London-Early-Careers.pdf',
+    firstYear: true,
+    description: 'Short spring insight scheme specifically for first-year law students.'
+  },
+  {
+    id: 16, name: 'Latham & Watkins', type: 'us', typeLabel: 'US Firm',
+    program: 'Summer Vacation Scheme',
+    opens: '2026-09-01', closes: '2027-01-15',
+    duration: '3 weeks', stipend: '£750/week',
+    location: 'London', notes_default: '',
+    url: 'https://www.lw.com/admin/Upload/Documents/Latham-London-Early-Careers.pdf',
+    firstYear: false,
+    description: 'Market-leading US firm with top-tier private equity and finance practices.'
+  },
+  {
+    id: 17, name: 'White & Case', type: 'us', typeLabel: 'US Firm',
+    program: 'Summer Vacation Scheme',
+    opens: '2026-09-01', closes: '2027-01-12',
+    duration: '2 weeks', stipend: '£700/week',
+    location: 'London', notes_default: '',
+    url: 'https://www.whitecase.com/careers/locations/uk/early-careers/our-offer/vacation-schemes',
+    firstYear: false,
+    description: 'Rolling basis review — apply early. Strong capital markets and international arbitration.'
+  },
+  {
+    id: 18, name: 'Mayer Brown', type: 'us', typeLabel: 'US Firm',
+    program: 'Summer Vacation Scheme',
+    opens: '2026-09-01', closes: '2027-01-12',
+    duration: '2 weeks', stipend: '£550/week + £100 travel',
+    location: 'London', notes_default: '',
+    url: 'https://www.mayerbrown.com/en/careers/students-and-graduates',
+    firstYear: false,
+    description: 'Respected transactional firm with strong finance and real estate practice.'
+  },
+  {
+    id: 19, name: 'Sidley Austin', type: 'us', typeLabel: 'US Firm',
+    program: 'London Vacation Scheme',
+    opens: '2026-09-01', closes: '2027-01-10',
+    duration: '2 weeks', stipend: '£750/week',
+    location: 'London', notes_default: '',
+    url: 'https://www.sidley.com/en/careers/law-students/london',
+    firstYear: false,
+    description: 'Top-tier US firm with exceptional finance and restructuring practice in London.'
+  },
+  {
+    id: 20, name: 'Sullivan & Cromwell', type: 'us', typeLabel: 'US Firm',
+    program: 'London Summer Programme',
+    opens: '2026-10-01', closes: '2027-01-10',
+    duration: '8 weeks', stipend: '£800/week',
+    location: 'London', notes_default: '',
+    url: 'https://www.sullcrom.com/London-office',
+    firstYear: false,
+    description: 'Elite US firm; one of the highest-paying London programmes. Limited places.'
+  },
+  {
+    id: 21, name: 'Weil Gotshal & Manges', type: 'us', typeLabel: 'US Firm',
+    program: 'London Summer Scheme',
+    opens: '2026-09-01', closes: '2027-01-08',
+    duration: '3 weeks', stipend: '£750/week',
+    location: 'London', notes_default: '',
+    url: 'https://www.weil.com/legal-services/offices/london/law-student-programmes',
+    firstYear: false,
+    description: 'Leading private equity and restructuring firm. Highly sought-after scheme.'
+  },
+  {
+    id: 22, name: 'Davis Polk', type: 'us', typeLabel: 'US Firm',
+    program: 'London Summer Programme',
+    opens: '2026-10-01', closes: '2027-01-10',
+    duration: '8 weeks', stipend: '£800/week',
+    location: 'London', notes_default: '',
+    url: 'https://www.davispolk.com/careers/london',
+    firstYear: false,
+    description: 'Premier Wall Street firm with a leading London capital markets practice.'
+  },
+  {
+    id: 23, name: 'Kirkland & Ellis', type: 'us', typeLabel: 'US Firm',
+    program: 'London Summer Associate',
+    opens: '2026-09-01', closes: '2026-12-15',
+    duration: '10 weeks', stipend: '£1,000+/week',
+    location: 'London', notes_default: '',
+    url: 'https://www.kirkland.com/offices/london/london-law-student-programs',
+    firstYear: false,
+    description: 'World\'s largest law firm by revenue. Dominant in private equity and M&A.'
+  },
+  {
+    id: 24, name: 'Paul Weiss', type: 'us', typeLabel: 'US Firm',
+    program: 'London Internship',
+    opens: '2026-09-01', closes: '2027-01-10',
+    duration: '8 weeks', stipend: '£800/week',
+    location: 'London', notes_default: '',
+    url: 'https://www.paulweiss.com/careers/london',
+    firstYear: false,
+    description: 'Elite US firm known for litigation and M&A. Rapidly expanding London office.'
+  },
+  // Other Notable
+  {
+    id: 25, name: 'DLA Piper', type: 'other', typeLabel: 'International',
+    program: 'Summer Internship',
+    opens: '2026-09-01', closes: '2027-01-31',
+    duration: '3 weeks', stipend: 'Paid',
+    location: 'Multiple UK', notes_default: '',
+    url: 'https://careers.dlapiper.com/early-careers/europe/uk/summer-internship.html',
+    firstYear: false,
+    description: 'Gateway to International Training Programme. Multiple UK office locations.'
+  },
+  {
+    id: 26, name: 'Eversheds Sutherland', type: 'other', typeLabel: 'International',
+    program: 'Summer Vacation Scheme',
+    opens: '2026-09-01', closes: '2027-01-26',
+    duration: '2 weeks', stipend: 'Competitive',
+    location: 'Multiple UK', notes_default: '',
+    url: 'https://www.eversheds-sutherland.com/en/united-kingdom/careers/careers-page/students-and-recent-graduates/student-and-graduate-applications',
+    firstYear: false,
+    description: 'Large international firm with offices across multiple UK cities.'
+  },
+  {
+    id: 27, name: 'Pinsent Masons', type: 'other', typeLabel: 'International',
+    program: 'Summer Vacation Scheme',
+    opens: '2026-10-01', closes: '2027-01-17',
+    duration: '2 weeks', stipend: 'Competitive',
+    location: 'Multiple UK', notes_default: '',
+    url: 'https://www.pinsentmasons.com/careers/students/vacation-scheme',
+    firstYear: false,
+    description: 'Leading in infrastructure, energy, and technology. Strong regional presence.'
+  },
+  {
+    id: 28, name: 'Bird & Bird', type: 'other', typeLabel: 'International',
+    program: 'Summer Vacation Scheme',
+    opens: '2026-10-01', closes: '2027-01-15',
+    duration: '2 weeks', stipend: 'Competitive',
+    location: 'London', notes_default: '',
+    url: 'https://www.twobirds.com/en/careers/students-and-graduates/vacation-schemes',
+    firstYear: false,
+    description: 'Leading technology, media and sport law practice. Growing life sciences practice.'
+  },
+  {
+    id: 29, name: 'Taylor Wessing', type: 'other', typeLabel: 'International',
+    program: 'Summer Vacation Scheme',
+    opens: '2026-10-01', closes: '2027-01-10',
+    duration: '2 weeks', stipend: 'Competitive',
+    location: 'London', notes_default: '',
+    url: 'https://www.taylorwessing.com/en/join-us/students-and-graduates/vacation-schemes',
+    firstYear: false,
+    description: 'Technology and innovation focused firm with strong private equity and IP practices.'
+  },
+  {
+    id: 30, name: 'Clyde & Co', type: 'other', typeLabel: 'International',
+    program: 'Summer Vacation Scheme',
+    opens: '2026-09-01', closes: '2027-01-20',
+    duration: '2 weeks', stipend: 'Competitive',
+    location: 'London', notes_default: '',
+    url: 'https://www.clydeco.com/en/careers/students-and-graduates',
+    firstYear: false,
+    description: 'Leading global firm in insurance, transport, energy and natural resources.'
+  },
+  {
+    id: 31, name: 'Stephenson Harwood', type: 'other', typeLabel: 'International',
+    program: 'Summer Vacation Scheme',
+    opens: '2026-10-01', closes: '2027-01-15',
+    duration: '2 weeks', stipend: '£400/week',
+    location: 'London', notes_default: '',
+    url: 'https://www.shlegal.com/careers/students-and-graduates',
+    firstYear: false,
+    description: 'Strong shipping, aviation and asset finance practice. Growing private wealth team.'
+  },
+  {
+    id: 32, name: 'Weightmans', type: 'other', typeLabel: 'UK Regional',
+    program: 'Summer Vacation Scheme',
+    opens: '2026-10-01', closes: '2027-02-07',
+    duration: '1 week', stipend: 'Competitive',
+    location: 'Multiple UK', notes_default: '',
+    url: 'https://www.weightmans.com/careers/students/',
+    firstYear: false,
+    description: 'Top 40 UK firm with offices in Liverpool, Manchester, Birmingham, Leeds and London.'
+  },
+  {
+    id: 33, name: 'Shoosmiths', type: 'other', typeLabel: 'UK Regional',
+    program: 'Summer Vacation Scheme',
+    opens: '2026-11-01', closes: '2027-01-31',
+    duration: '1 week', stipend: 'Competitive',
+    location: 'Multiple UK', notes_default: '',
+    url: 'https://www.shoosmiths.com/careers/students-and-graduates',
+    firstYear: false,
+    description: 'National firm with strong commercial property, corporate and employment practices.'
+  },
+  {
+    id: 34, name: 'Kennedys', type: 'other', typeLabel: 'International',
+    program: 'Summer Vacation Scheme',
+    opens: '2026-10-01', closes: '2027-01-10',
+    duration: '2 weeks', stipend: 'Competitive',
+    location: 'London', notes_default: '',
+    url: 'https://kennedyslaw.com/en/careers/students-and-graduates/uk-vacation-placements/',
+    firstYear: false,
+    description: 'Leading disputes and insurance firm. Strong casualty litigation practice.'
+  },
+  {
+    id: 35, name: 'Addleshaw Goddard', type: 'other', typeLabel: 'International',
+    program: 'Summer Vacation Scheme',
+    opens: '2026-09-01', closes: '2026-12-31',
+    duration: '2 weeks', stipend: 'Competitive',
+    location: 'London / Leeds / Manchester', notes_default: '',
+    url: 'https://www.addleshawgoddard.com/en/careers/students-and-graduates/',
+    firstYear: false,
+    description: 'Leading corporate and finance firm with strong UK regional presence.'
+  },
+  {
+    id: 36, name: 'DAC Beachcroft', type: 'other', typeLabel: 'International',
+    program: 'Summer Vacation Scheme',
+    opens: '2026-11-01', closes: '2027-02-14',
+    duration: '2 weeks', stipend: 'Competitive',
+    location: 'Multiple UK', notes_default: '',
+    url: 'https://www.dacbeachcroft.com/en/gb/careers/students/',
+    firstYear: false,
+    description: 'Major insurance and health sector specialist. Strong across all UK regions.'
+  },
+  {
+    id: 37, name: 'Katten', type: 'us', typeLabel: 'US Firm',
+    program: 'Summer Vacation Scheme',
+    opens: '2026-09-01', closes: '2027-01-15',
+    duration: '2–3 weeks', stipend: '£700/week',
+    location: 'London', notes_default: '',
+    url: 'https://katten.com/london-training-contract-and-internship-programme',
+    firstYear: false,
+    description: 'Strong financial services regulatory and structured finance practices.'
+  },
+  {
+    id: 38, name: 'Ropes & Gray', type: 'us', typeLabel: 'US Firm',
+    program: 'London Vacation Scheme',
+    opens: '2026-09-01', closes: '2026-12-01',
+    duration: '2 weeks', stipend: '£750/week',
+    location: 'London', notes_default: '',
+    url: 'https://www.ropesgray.com/en/careers/london/vacation-scheme',
+    firstYear: false,
+    description: 'Elite firm dominant in private equity, asset management and life sciences.'
+  },
+  {
+    id: 39, name: 'Cleary Gottlieb', type: 'us', typeLabel: 'US Firm',
+    program: 'London Summer Programme',
+    opens: '2026-10-01', closes: '2027-01-10',
+    duration: '8–10 weeks', stipend: '£800/week',
+    location: 'London', notes_default: '',
+    url: 'https://www.clearygottlieb.com/career-opportunities/london-trainee-solicitor-programme',
+    firstYear: false,
+    description: 'One of the most prestigious international firms. Exceptional M&A and antitrust practice.'
+  },
+  {
+    id: 40, name: 'Skadden', type: 'us', typeLabel: 'US Firm',
+    program: 'London Summer Programme',
+    opens: '2026-10-01', closes: '2027-01-10',
+    duration: '8–10 weeks', stipend: '£800/week',
+    location: 'London', notes_default: '',
+    url: 'https://www.skadden.com/careers/attorneys/law-students-and-graduates/united-kingdom',
+    firstYear: false,
+    description: 'Premier M&A and capital markets firm. Iconic name in corporate law globally.'
+  },
+];
+
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const SHORT_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+/* ─────────────────────────────────────────────
+   HELPERS
+───────────────────────────────────────────── */
+function parseDate(s) { return new Date(s + 'T00:00:00'); }
+
+function formatDate(s) {
+  const d = parseDate(s);
+  return `${d.getDate()} ${SHORT_MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function getDaysUntil(s) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const d = parseDate(s); d.setHours(0,0,0,0);
+  return Math.round((d - today) / 86400000);
+}
+
+function urgencyClass(s) {
+  const days = getDaysUntil(s);
+  if (days < 0) return '';
+  if (days <= 14) return 'urgent';
+  if (days <= 30) return 'soon';
+  return '';
+}
+
+function stageClass(stage) {
+  return STAGES.find(s => s.value === stage)?.cls || 'stage-not-started';
+}
+
+function stageLabel(stage) {
+  return STAGES.find(s => s.value === stage)?.label || 'Not Started';
+}
+
+/* ─────────────────────────────────────────────
+   STORAGE
+───────────────────────────────────────────── */
+const STORAGE_KEY = 'law_tracker_v2';
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch(e) {}
+  const state = {};
+  FIRMS.forEach(f => {
+    state[f.id] = { stage: 'not-started', completed: false, notes: '' };
+  });
+  return state;
+}
+
+function saveState(state) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
+}
+
+/* ─────────────────────────────────────────────
+   COMPONENTS
+───────────────────────────────────────────── */
+function StatBar({ appState }) {
+  const total = FIRMS.length;
+  const applied = Object.values(appState).filter(s =>
+    ['applied','online-test','first-interview','second-interview','ac','offer'].includes(s.stage)
+  ).length;
+  const interviews = Object.values(appState).filter(s =>
+    ['first-interview','second-interview','ac'].includes(s.stage)
+  ).length;
+  const acs = Object.values(appState).filter(s => s.stage === 'ac').length;
+  const offers = Object.values(appState).filter(s => s.stage === 'offer').length;
+  const rejected = Object.values(appState).filter(s => s.stage === 'rejected').length;
+  const pct = total > 0 ? Math.round((applied / total) * 100) : 0;
+
+  return (
+    <>
+      <div className="stats-bar">
+        <div className="stat-card">
+          <div className="stat-num">{total}</div>
+          <div className="stat-label">Total Firms</div>
+        </div>
+        <div className="stat-card blue">
+          <div className="stat-num">{applied}</div>
+          <div className="stat-label">Applied</div>
+        </div>
+        <div className="stat-card orange">
+          <div className="stat-num">{interviews}</div>
+          <div className="stat-label">Interviews</div>
+        </div>
+        <div className="stat-card purple">
+          <div className="stat-num">{acs}</div>
+          <div className="stat-label">Assess. Centres</div>
+        </div>
+        <div className="stat-card green">
+          <div className="stat-num">{offers}</div>
+          <div className="stat-label">Offers</div>
+        </div>
+        <div className="stat-card red">
+          <div className="stat-num">{rejected}</div>
+          <div className="stat-label">Rejected</div>
+        </div>
+      </div>
+      <div className="progress-section">
+        <div className="progress-label">Application progress</div>
+        <div className="progress-track">
+          <div className="progress-fill" style={{ width: pct + '%' }} />
+        </div>
+        <div className="progress-pct">{pct}%</div>
+        <div style={{ fontFamily: 'sans-serif', fontSize: 12, color: 'var(--text-muted)', marginLeft: 8 }}>
+          {applied} of {total} applied
+        </div>
+      </div>
+    </>
+  );
+}
+
+function TrackerView({ appState, setAppState }) {
+  const [filter, setFilter] = useState('all');
+  const [search, setSearch] = useState('');
+  const [modal, setModal] = useState(null);
+  const [sortCol, setSortCol] = useState('closes');
+  const [sortDir, setSortDir] = useState(1);
+
+  const typeFilters = [
+    { key: 'all', label: 'All Firms' },
+    { key: 'first-year', label: '1st Year Only' },
+    { key: 'magic', label: 'Magic Circle' },
+    { key: 'silver', label: 'Silver Circle' },
+    { key: 'us', label: 'US Firms' },
+    { key: 'other', label: 'Other' },
+  ];
+
+  const filtered = useMemo(() => {
+    let list = [...FIRMS];
+    if (filter === 'first-year') list = list.filter(f => f.firstYear);
+    else if (filter !== 'all') list = list.filter(f => f.type === filter);
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter(f => f.name.toLowerCase().includes(q) || f.program.toLowerCase().includes(q));
+    }
+    list.sort((a,b) => {
+      let va, vb;
+      if (sortCol === 'closes') { va = a.closes; vb = b.closes; }
+      else if (sortCol === 'opens') { va = a.opens; vb = b.opens; }
+      else if (sortCol === 'name') { va = a.name; vb = b.name; }
+      else if (sortCol === 'stage') { va = stageLabel(appState[a.id]?.stage || 'not-started'); vb = stageLabel(appState[b.id]?.stage || 'not-started'); }
+      else { va = a[sortCol] || ''; vb = b[sortCol] || ''; }
+      return va < vb ? -sortDir : va > vb ? sortDir : 0;
+    });
+    return list;
+  }, [filter, search, appState, sortCol, sortDir]);
+
+  function updateField(id, field, val) {
+    setAppState(prev => {
+      const next = { ...prev, [id]: { ...prev[id], [field]: val } };
+      saveState(next);
+      return next;
+    });
+  }
+
+  function thBtn(col, label) {
+    return (
+      <th onClick={() => { if(sortCol===col) setSortDir(d=>-d); else { setSortCol(col); setSortDir(1); }}} style={{cursor:'pointer', userSelect:'none'}}>
+        {label} {sortCol===col ? (sortDir===1?'↑':'↓') : ''}
+      </th>
+    );
+  }
+
+  return (
+    <div>
+      {modal && (
+        <div className="modal-overlay" onClick={() => setModal(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <button className="modal-close" onClick={() => setModal(null)}>×</button>
+            <div className="modal-title">{modal.name}</div>
+            <div className="modal-row"><span className="modal-key">Programme</span><span className="modal-val">{modal.program}</span></div>
+            <div className="modal-row"><span className="modal-key">Type</span><span className="modal-val">{modal.typeLabel}</span></div>
+            <div className="modal-row"><span className="modal-key">Opens</span><span className="modal-val">{formatDate(modal.opens)}</span></div>
+            <div className="modal-row"><span className="modal-key">Closes</span><span className="modal-val">{formatDate(modal.closes)}</span></div>
+            <div className="modal-row"><span className="modal-key">Duration</span><span className="modal-val">{modal.duration}</span></div>
+            <div className="modal-row"><span className="modal-key">Stipend</span><span className="modal-val">{modal.stipend}</span></div>
+            <div className="modal-row"><span className="modal-key">Location</span><span className="modal-val">{modal.location}</span></div>
+            <div style={{ marginTop: 12, fontFamily: 'sans-serif', fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.6 }}>{modal.description}</div>
+            {modal.firstYear && <div style={{ marginTop: 10, background: 'var(--green-light)', color: 'var(--green)', padding: '6px 12px', borderRadius: 6, fontFamily: 'sans-serif', fontSize: 12, fontWeight: 700 }}>✓ Open to First-Year Students</div>}
+            <div style={{ marginTop: 16 }}>
+              <a href={modal.url} target="_blank" rel="noopener" style={{ color: 'var(--blue)', fontFamily: 'sans-serif', fontSize: 13 }}>Visit application page →</a>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="section-header">
+        <div className="section-title">
+          Application Tracker
+          <span style={{ fontSize: 14, color: 'var(--text-muted)', fontFamily: 'sans-serif', fontWeight: 400, marginLeft: 10 }}>
+            {filtered.length} firms
+          </span>
+        </div>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <input
+            className="search-input"
+            placeholder="Search firms…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div className="filter-bar" style={{ marginBottom: 16 }}>
+        {typeFilters.map(f => (
+          <button key={f.key} className={`filter-chip ${filter === f.key ? 'active' : ''}`} onClick={() => setFilter(f.key)}>
+            {f.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="tracker-table">
+        <table>
+          <thead>
+            <tr>
+              {thBtn('name', 'Firm')}
+              <th>Type</th>
+              <th>Programme</th>
+              {thBtn('opens', 'Opens')}
+              {thBtn('closes', 'Deadline')}
+              <th>Stipend</th>
+              {thBtn('stage', 'Stage')}
+              <th>Notes</th>
+              <th>Done</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map(firm => {
+              const st = appState[firm.id] || { stage: 'not-started', completed: false, notes: '' };
+              return (
+                <tr key={firm.id} className={st.completed ? 'completed' : ''}>
+                  <td>
+                    <span className="firm-name" style={{ cursor: 'pointer', textDecoration: 'underline dotted' }} onClick={() => setModal(firm)}>
+                      {firm.name}
+                    </span>
+                    {firm.firstYear && <span style={{ marginLeft: 6, fontSize: 10, background: 'var(--green-light)', color: 'var(--green)', padding: '1px 5px', borderRadius: 3, fontFamily: 'sans-serif', fontWeight: 700 }}>1Y</span>}
+                  </td>
+                  <td><span className={`firm-type ${firm.type}`}>{firm.typeLabel}</span></td>
+                  <td style={{ maxWidth: 160, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: 12 }}>{firm.program}</td>
+                  <td className={`date-cell ${urgencyClass(firm.opens)}`}>{formatDate(firm.opens)}</td>
+                  <td className={`date-cell ${urgencyClass(firm.closes)}`}>
+                    {formatDate(firm.closes)}
+                    {getDaysUntil(firm.closes) > 0 && getDaysUntil(firm.closes) <= 30 && (
+                      <span style={{ marginLeft: 6, fontFamily: 'sans-serif', fontSize: 10 }}>({getDaysUntil(firm.closes)}d)</span>
+                    )}
+                    {getDaysUntil(firm.closes) < 0 && <span style={{ marginLeft: 4, color: 'var(--text-muted)', fontSize: 10 }}>Closed</span>}
+                  </td>
+                  <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{firm.stipend}</td>
+                  <td className="no-strike">
+                    <select
+                      className={`stage-select ${stageClass(st.stage)}`}
+                      value={st.stage}
+                      onChange={e => updateField(firm.id, 'stage', e.target.value)}
+                    >
+                      {STAGES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                    </select>
+                  </td>
+                  <td className="no-strike">
+                    <input
+                      className="notes-input"
+                      placeholder="Add note…"
+                      value={st.notes}
+                      onChange={e => updateField(firm.id, 'notes', e.target.value)}
+                    />
+                  </td>
+                  <td className="no-strike">
+                    <button
+                      className={`complete-btn ${st.completed ? 'done' : ''}`}
+                      title={st.completed ? 'Mark incomplete' : 'Mark complete'}
+                      onClick={() => updateField(firm.id, 'completed', !st.completed)}
+                    >
+                      {st.completed ? '✓' : '○'}
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+            {filtered.length === 0 && (
+              <tr><td colSpan={9}>
+                <div className="empty-state"><div className="icon">🔍</div>No firms match your search.</div>
+              </td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function CalendarView({ appState }) {
+  const today = new Date();
+  const [year, setYear] = useState(today.getFullYear());
+  const [month, setMonth] = useState(today.getMonth());
+
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const daysInPrev = new Date(year, month, 0).getDate();
+
+  const cells = [];
+  // prev month padding
+  for (let i = firstDay - 1; i >= 0; i--) {
+    cells.push({ day: daysInPrev - i, thisMonth: false, date: new Date(year, month - 1, daysInPrev - i) });
+  }
+  // this month
+  for (let d = 1; d <= daysInMonth; d++) {
+    cells.push({ day: d, thisMonth: true, date: new Date(year, month, d) });
+  }
+  // next month padding
+  let nd = 1;
+  while (cells.length % 7 !== 0) {
+    cells.push({ day: nd++, thisMonth: false, date: new Date(year, month + 1, nd - 1) });
+  }
+
+  function dateStr(d) {
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+
+  function eventsOn(d) {
+    const ds = dateStr(d);
+    const evs = [];
+    FIRMS.forEach(f => {
+      const done = appState[f.id]?.completed;
+      if (f.opens === ds) evs.push({ firm: f, type: 'opens', done });
+      if (f.closes === ds) evs.push({ firm: f, type: 'closes', done });
+    });
+    return evs;
+  }
+
+  function prevMonth() { if(month===0){setMonth(11);setYear(y=>y-1);}else{setMonth(m=>m-1);} }
+  function nextMonth() { if(month===11){setMonth(0);setYear(y=>y+1);}else{setMonth(m=>m+1);} }
+
+  const todayStr = dateStr(today);
+
+  return (
+    <div>
+      <div className="section-header" style={{ marginBottom: 16 }}>
+        <div className="section-title">Deadline Calendar</div>
+        <div style={{ display: 'flex', gap: 10, fontFamily: 'sans-serif', fontSize: 12, alignItems: 'center' }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 10, height: 10, background: '#0d47a1', borderRadius: 2, display: 'inline-block' }} /> Opens</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 10, height: 10, background: '#c62828', borderRadius: 2, display: 'inline-block' }} /> Deadline</span>
+          <span style={{ color: 'var(--text-muted)' }}>Strikethrough = completed</span>
+        </div>
+      </div>
+      <div className="calendar-wrapper">
+        <div className="calendar-header">
+          <button className="cal-nav-btn" onClick={prevMonth}>‹</button>
+          <span className="cal-month-title">{MONTHS[month]} {year}</span>
+          <button className="cal-nav-btn" onClick={nextMonth}>›</button>
+        </div>
+        <div className="cal-grid">
+          {DAYS.map(d => <div key={d} className="cal-dow">{d}</div>)}
+          {cells.map((c, i) => {
+            const evs = c.thisMonth ? eventsOn(c.date) : [];
+            const isToday = c.thisMonth && dateStr(c.date) === todayStr;
+            return (
+              <div key={i} className={`cal-cell ${!c.thisMonth ? 'other-month' : ''} ${isToday ? 'today' : ''}`}>
+                <div className="cal-day-num">{c.day}</div>
+                {evs.slice(0,3).map((ev, j) => (
+                  <div key={j} className={`cal-event ${ev.type} ${ev.done ? 'done-event' : ''}`} title={`${ev.firm.name} — ${ev.type === 'opens' ? 'Opens' : 'Deadline'}`}>
+                    {ev.type === 'opens' ? '▶ ' : '⏰ '}{ev.firm.name}
+                  </div>
+                ))}
+                {evs.length > 3 && <div style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'sans-serif' }}>+{evs.length - 3} more</div>}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TimelineView({ appState }) {
+  const events = [];
+  FIRMS.forEach(f => {
+    events.push({ date: f.opens, firm: f, type: 'opens', label: `${f.name} — Applications Open`, detail: f.program });
+    events.push({ date: f.closes, firm: f, type: 'closes', label: `${f.name} — Deadline`, detail: f.program });
+  });
+  events.sort((a,b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+
+  const today = new Date(); today.setHours(0,0,0,0);
+  const upcoming = events.filter(e => {
+    const d = parseDate(e.date); d.setHours(0,0,0,0);
+    return d >= today;
+  }).slice(0, 60);
+
+  let lastDate = null;
+
+  return (
+    <div>
+      <div className="section-header" style={{ marginBottom: 16 }}>
+        <div className="section-title">Upcoming Timeline</div>
+        <span style={{ fontFamily: 'sans-serif', fontSize: 12, color: 'var(--text-muted)' }}>
+          Next {upcoming.length} events
+        </span>
+      </div>
+      <div className="timeline-container">
+        {upcoming.map((ev, i) => {
+          const isNewDate = ev.date !== lastDate;
+          lastDate = ev.date;
+          const done = appState[ev.firm.id]?.completed;
+          const isPast = parseDate(ev.date) < today;
+          return (
+            <div key={i} className="timeline-item">
+              <div className="timeline-left">
+                <div className={`timeline-dot ${ev.type === 'closes' ? 'closes' : ''} ${isPast ? 'past' : ''}`} />
+                {i < upcoming.length - 1 && <div className="timeline-line" />}
+              </div>
+              <div className="timeline-content">
+                {isNewDate && <div className="timeline-date">{formatDate(ev.date)}{getDaysUntil(ev.date) >= 0 && ` · in ${getDaysUntil(ev.date)} days`}</div>}
+                <div className={`timeline-card ${ev.type === 'closes' ? 'closes' : ''}`} style={{ opacity: done ? 0.45 : 1, textDecoration: done ? 'line-through' : 'none' }}>
+                  <div className="timeline-firm">{ev.label}</div>
+                  <div className="timeline-detail">{ev.detail} · {ev.firm.location} · {ev.firm.stipend}</div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+        {upcoming.length === 0 && <div className="empty-state"><div className="icon">🎉</div>All deadlines have passed.</div>}
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   APP ROOT
+───────────────────────────────────────────── */
+function App() {
+  const [tab, setTab] = useState('tracker');
+  const [appState, setAppState] = useState(loadState);
+
+  const deadlinesSoon = FIRMS.filter(f => {
+    const days = getDaysUntil(f.closes);
+    return days >= 0 && days <= 14;
+  }).length;
+
+  return (
+    <>
+      <div className="header">
+        <div className="header-brand">
+          <div className="header-logo">⚖</div>
+          <div>
+            <div className="header-title">Law Internship Tracker</div>
+            <div className="header-subtitle">Summer 2027 · First Year Guide</div>
+          </div>
+        </div>
+        <nav className="header-nav">
+          <button className={`nav-btn ${tab==='tracker'?'active':''}`} onClick={()=>setTab('tracker')}>Tracker</button>
+          <button className={`nav-btn ${tab==='calendar'?'active':''}`} onClick={()=>setTab('calendar')}>
+            Calendar
+            {deadlinesSoon > 0 && <span className="badge">{deadlinesSoon}</span>}
+          </button>
+          <button className={`nav-btn ${tab==='timeline'?'active':''}`} onClick={()=>setTab('timeline')}>Timeline</button>
+        </nav>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div style={{ fontFamily: 'sans-serif', fontSize: 11, color: 'rgba(255,255,255,0.5)', textAlign: 'right' }}>
+            {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+          </div>
+          <div style={{ display: 'flex', gap: 4 }}>
+            {['tracker','calendar','timeline'].map(t => (
+              <button key={t} className={`nav-btn ${tab===t?'active':''}`} onClick={()=>setTab(t)} style={{ fontSize: 12, padding: '6px 12px' }}>
+                {t==='tracker'?'Tracker':t==='calendar'?'Calendar':'Timeline'}
+                {t==='calendar' && deadlinesSoon > 0 && <span className="badge">{deadlinesSoon}</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="main">
+        <StatBar appState={appState} />
+        {tab === 'tracker' && <TrackerView appState={appState} setAppState={setAppState} />}
+        {tab === 'calendar' && <CalendarView appState={appState} />}
+        {tab === 'timeline' && <TimelineView appState={appState} />}
+      </div>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

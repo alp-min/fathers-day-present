@@ -7,6 +7,7 @@
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -85,164 +86,42 @@
       text-align: center;
     }
     .auth-logo {
-      width: 52px;
-      height: 52px;
+      width: 52px; height: 52px;
       background: linear-gradient(135deg, var(--gold) 0%, #e8c96e 100%);
       border-radius: 14px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      display: flex; align-items: center; justify-content: center;
       font-size: 26px;
       margin: 0 auto 14px;
       box-shadow: 0 4px 12px rgba(201,168,76,0.4);
     }
-    .auth-brand {
-      font-size: 22px;
-      font-weight: 800;
-      color: #fff;
-      letter-spacing: -0.3px;
-      text-shadow: 0 2px 8px rgba(0,0,0,0.3);
-      line-height: 1.2;
-    }
+    .auth-brand { font-size: 22px; font-weight: 800; color: #fff; letter-spacing: -0.3px; text-shadow: 0 2px 8px rgba(0,0,0,0.3); line-height: 1.2; }
     .auth-brand span { color: var(--gold-light); }
-    .auth-tagline {
-      font-family: sans-serif;
-      font-size: 11px;
-      color: rgba(255,255,255,0.55);
-      letter-spacing: 1.2px;
-      text-transform: uppercase;
-      margin-top: 4px;
-    }
-    .auth-tabs {
-      display: flex;
-      border-bottom: 2px solid var(--border);
-    }
-    .auth-tab {
-      flex: 1;
-      padding: 14px;
-      background: none;
-      border: none;
-      font-family: sans-serif;
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--muted);
-      cursor: pointer;
-      transition: all var(--transition);
-      border-bottom: 2px solid transparent;
-      margin-bottom: -2px;
-    }
+    .auth-tagline { font-family: sans-serif; font-size: 11px; color: rgba(255,255,255,0.55); letter-spacing: 1.2px; text-transform: uppercase; margin-top: 4px; }
+    .auth-tabs { display: flex; border-bottom: 2px solid var(--border); }
+    .auth-tab { flex: 1; padding: 14px; background: none; border: none; font-family: sans-serif; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; transition: all var(--transition); border-bottom: 2px solid transparent; margin-bottom: -2px; }
     .auth-tab.active { color: var(--navy); border-bottom-color: var(--gold); }
     body.dark .auth-tab.active { color: var(--gold); }
     .auth-body { padding: 28px 32px; }
     .auth-field { margin-bottom: 16px; }
-    .auth-label {
-      display: block;
-      font-family: sans-serif;
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--muted);
-      margin-bottom: 6px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    .auth-input {
-      width: 100%;
-      border: 1.5px solid var(--border);
-      border-radius: 8px;
-      padding: 10px 14px;
-      font-family: sans-serif;
-      font-size: 14px;
-      background: var(--bg);
-      color: var(--text);
-      outline: none;
-      transition: border-color var(--transition);
-    }
+    .auth-label { display: block; font-family: sans-serif; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .auth-input { width: 100%; border: 1.5px solid var(--border); border-radius: 8px; padding: 10px 14px; font-family: sans-serif; font-size: 14px; background: var(--bg); color: var(--text); outline: none; transition: border-color var(--transition); }
     .auth-input:focus { border-color: var(--gold); }
-    .auth-btn {
-      width: 100%;
-      padding: 12px;
-      background: linear-gradient(135deg, var(--navy) 0%, #1a3260 100%);
-      color: white;
-      border: none;
-      border-radius: 8px;
-      font-family: sans-serif;
-      font-size: 14px;
-      font-weight: 700;
-      cursor: pointer;
-      margin-top: 8px;
-      transition: opacity var(--transition), transform var(--transition);
-      box-shadow: 0 4px 12px rgba(15,31,61,0.3);
-    }
+    .auth-btn { width: 100%; padding: 12px; background: linear-gradient(135deg, var(--navy) 0%, #1a3260 100%); color: white; border: none; border-radius: 8px; font-family: sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; margin-top: 8px; transition: opacity var(--transition), transform var(--transition); box-shadow: 0 4px 12px rgba(15,31,61,0.3); }
     .auth-btn:hover { opacity: 0.9; transform: translateY(-1px); }
     .auth-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-    .auth-error {
-      background: var(--red-bg);
-      color: var(--red);
-      padding: 10px 14px;
-      border-radius: 8px;
-      font-family: sans-serif;
-      font-size: 13px;
-      margin-bottom: 16px;
-    }
+    .auth-error { background: var(--red-bg); color: var(--red); padding: 10px 14px; border-radius: 8px; font-family: sans-serif; font-size: 13px; margin-bottom: 16px; }
+    .auth-success { background: var(--green-bg); color: var(--green); padding: 10px 14px; border-radius: 8px; font-family: sans-serif; font-size: 13px; margin-bottom: 16px; }
 
     /* ── HEADER ── */
-    .header {
-      background: linear-gradient(90deg, #0a1628 0%, var(--navy) 40%, #162952 100%);
-      color: #fff;
-      padding: 0 28px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      height: 62px;
-      box-shadow: 0 2px 16px rgba(10,22,40,0.5), 0 1px 4px rgba(10,22,40,0.3);
-      position: sticky;
-      top: 0;
-      z-index: 100;
-    }
+    .header { background: linear-gradient(90deg, #0a1628 0%, var(--navy) 40%, #162952 100%); color: #fff; padding: 0 28px; display: flex; align-items: center; justify-content: space-between; height: 62px; box-shadow: 0 2px 16px rgba(10,22,40,0.5), 0 1px 4px rgba(10,22,40,0.3); position: sticky; top: 0; z-index: 100; }
     .header-brand { display: flex; align-items: center; gap: 12px; }
-    .header-logo {
-      width: 38px; height: 38px;
-      background: linear-gradient(135deg, var(--gold) 0%, #e8c96e 100%);
-      border-radius: 10px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 20px;
-      box-shadow: 0 3px 10px rgba(201,168,76,0.45), inset 0 1px 0 rgba(255,255,255,0.2);
-    }
-    .header-title {
-      font-size: 19px;
-      font-weight: 800;
-      letter-spacing: -0.4px;
-      color: #fff;
-      text-shadow: 0 1px 4px rgba(0,0,0,0.4), 0 0 20px rgba(201,168,76,0.1);
-      line-height: 1.1;
-    }
+    .header-logo { width: 38px; height: 38px; background: linear-gradient(135deg, var(--gold) 0%, #e8c96e 100%); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; box-shadow: 0 3px 10px rgba(201,168,76,0.45), inset 0 1px 0 rgba(255,255,255,0.2); }
+    .header-title { font-size: 19px; font-weight: 800; letter-spacing: -0.4px; color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,0.4), 0 0 20px rgba(201,168,76,0.1); line-height: 1.1; }
     .header-title span { color: var(--gold-light); }
-    .header-subtitle {
-      font-family: sans-serif;
-      font-size: 10px;
-      color: rgba(255,255,255,0.45);
-      letter-spacing: 1.2px;
-      text-transform: uppercase;
-    }
+    .header-subtitle { font-family: sans-serif; font-size: 10px; color: rgba(255,255,255,0.45); letter-spacing: 1.2px; text-transform: uppercase; }
     .header-right { display: flex; align-items: center; gap: 6px; }
-    .header-user {
-      font-family: sans-serif;
-      font-size: 12px;
-      color: rgba(255,255,255,0.6);
-      margin-right: 6px;
-    }
-    .hbtn {
-      background: rgba(255,255,255,0.1);
-      border: 1px solid rgba(255,255,255,0.15);
-      color: rgba(255,255,255,0.85);
-      padding: 6px 14px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-family: sans-serif;
-      font-size: 12px;
-      font-weight: 500;
-      transition: all var(--transition);
-    }
+    .header-user { font-family: sans-serif; font-size: 12px; color: rgba(255,255,255,0.6); margin-right: 6px; }
+    .hbtn { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15); color: rgba(255,255,255,0.85); padding: 6px 14px; border-radius: 6px; cursor: pointer; font-family: sans-serif; font-size: 12px; font-weight: 500; transition: all var(--transition); }
     .hbtn:hover { background: rgba(255,255,255,0.2); color: #fff; }
     .hbtn.active { background: var(--gold); border-color: var(--gold); color: var(--navy); font-weight: 700; }
     .hbtn.icon { padding: 6px 10px; font-size: 15px; }
@@ -252,22 +131,8 @@
 
     /* ── STATS BAR ── */
     .stats-bar { display: grid; grid-template-columns: repeat(6,1fr); gap: 12px; margin-bottom: 18px; }
-    .stat-card {
-      border-radius: var(--radius);
-      padding: 16px 14px;
-      text-align: center;
-      border-top: 3px solid var(--gold);
-      transition: transform var(--transition), box-shadow var(--transition);
-      position: relative;
-      overflow: hidden;
-    }
-    .stat-card::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(160deg, var(--card) 60%, var(--bg) 100%);
-      z-index: 0;
-    }
+    .stat-card { border-radius: var(--radius); padding: 16px 14px; text-align: center; border-top: 3px solid var(--gold); transition: transform var(--transition), box-shadow var(--transition); position: relative; overflow: hidden; }
+    .stat-card::before { content: ''; position: absolute; inset: 0; background: linear-gradient(160deg, var(--card) 60%, var(--bg) 100%); z-index: 0; }
     .stat-card > * { position: relative; z-index: 1; }
     .stat-card { box-shadow: var(--sh-colored-gold); }
     .stat-card:hover { transform: translateY(-2px); }
@@ -281,17 +146,7 @@
     .stat-label { font-family: sans-serif; font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; font-weight: 600; }
 
     /* ── PROGRESS ── */
-    .progress-section {
-      background: var(--card);
-      border-radius: var(--radius);
-      padding: 14px 20px;
-      box-shadow: var(--sh);
-      margin-bottom: 24px;
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      border: 1px solid var(--border);
-    }
+    .progress-section { background: var(--card); border-radius: var(--radius); padding: 14px 20px; box-shadow: var(--sh); margin-bottom: 24px; display: flex; align-items: center; gap: 14px; border: 1px solid var(--border); }
     .progress-label { font-family: sans-serif; font-size: 12px; color: var(--muted); white-space: nowrap; min-width: 130px; font-weight: 600; }
     .progress-track { flex: 1; height: 9px; background: var(--bg2); border-radius: 99px; overflow: hidden; }
     .progress-fill { height: 100%; background: linear-gradient(90deg, var(--gold) 0%, var(--green) 100%); border-radius: 99px; transition: width 0.5s ease; }
@@ -304,51 +159,18 @@
     .section-title { font-size: 19px; color: var(--navy); font-weight: 700; }
     body.dark .section-title { color: #e6edf3; }
     .filter-bar { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 14px; }
-    .filter-chip {
-      background: none;
-      border: 1.5px solid var(--border);
-      padding: 5px 13px;
-      border-radius: 99px;
-      font-family: sans-serif;
-      font-size: 12px;
-      cursor: pointer;
-      color: var(--muted);
-      transition: all var(--transition);
-    }
+    .filter-chip { background: none; border: 1.5px solid var(--border); padding: 5px 13px; border-radius: 99px; font-family: sans-serif; font-size: 12px; cursor: pointer; color: var(--muted); transition: all var(--transition); }
     .filter-chip:hover { border-color: var(--gold); color: var(--text); }
     .filter-chip.active { background: var(--navy); border-color: var(--navy); color: #fff; }
     body.dark .filter-chip.active { background: var(--gold); border-color: var(--gold); color: var(--navy); }
-    .search-input {
-      border: 1.5px solid var(--border);
-      border-radius: 8px;
-      padding: 7px 13px;
-      font-family: sans-serif;
-      font-size: 13px;
-      outline: none;
-      background: var(--card);
-      color: var(--text);
-      transition: border-color var(--transition);
-      width: 210px;
-    }
+    .search-input { border: 1.5px solid var(--border); border-radius: 8px; padding: 7px 13px; font-family: sans-serif; font-size: 13px; outline: none; background: var(--card); color: var(--text); transition: border-color var(--transition); width: 210px; }
     .search-input:focus { border-color: var(--gold); }
 
     /* ── TRACKER TABLE ── */
     .tracker-table { background: var(--card); border-radius: 14px; box-shadow: var(--sh); overflow: hidden; border: 1px solid var(--border); }
     .tracker-table table { width: 100%; border-collapse: collapse; }
     .tracker-table thead { background: linear-gradient(90deg, var(--navy) 0%, #1a3260 100%); }
-    .tracker-table th {
-      padding: 11px 14px;
-      text-align: left;
-      font-family: sans-serif;
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: 0.8px;
-      text-transform: uppercase;
-      color: rgba(255,255,255,0.85);
-      white-space: nowrap;
-      cursor: pointer;
-      user-select: none;
-    }
+    .tracker-table th { padding: 11px 14px; text-align: left; font-family: sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: rgba(255,255,255,0.85); white-space: nowrap; cursor: pointer; user-select: none; }
     .tracker-table th:hover { color: #fff; }
     .tracker-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); font-family: sans-serif; font-size: 12px; vertical-align: middle; }
     .tracker-table tr:last-child td { border-bottom: none; }
@@ -372,19 +194,7 @@
     .date-cell { color: var(--muted); white-space: nowrap; font-size: 11px; }
     .date-cell.urgent { color: var(--red); font-weight: 700; }
     .date-cell.soon { color: var(--orange); font-weight: 600; }
-    .stage-select {
-      border: 1.5px solid var(--border);
-      border-radius: 6px;
-      padding: 4px 9px;
-      font-family: sans-serif;
-      font-size: 11px;
-      cursor: pointer;
-      background: var(--bg);
-      color: var(--text);
-      outline: none;
-      min-width: 148px;
-      transition: border-color var(--transition);
-    }
+    .stage-select { border: 1.5px solid var(--border); border-radius: 6px; padding: 4px 9px; font-family: sans-serif; font-size: 11px; cursor: pointer; background: var(--bg); color: var(--text); outline: none; min-width: 148px; transition: border-color var(--transition); }
     .stage-select:focus { border-color: var(--gold); }
     .stage-select.s-researching { background: var(--blue-bg); color: var(--blue); }
     .stage-select.s-applied { background: var(--orange-bg); color: var(--orange); }
@@ -396,32 +206,11 @@
     .stage-select.s-offer { background: var(--green-bg); color: var(--green); font-weight: 700; }
     .stage-select.s-rejected { background: var(--red-bg); color: var(--red); }
     .stage-select.s-withdrawn { background: var(--bg2); color: var(--muted); }
-    .icon-btn {
-      background: none;
-      border: 1.5px solid var(--border);
-      border-radius: 6px;
-      padding: 4px 9px;
-      cursor: pointer;
-      font-size: 14px;
-      transition: all var(--transition);
-      color: var(--muted);
-      line-height: 1;
-    }
+    .icon-btn { background: none; border: 1.5px solid var(--border); border-radius: 6px; padding: 4px 9px; cursor: pointer; font-size: 14px; transition: all var(--transition); color: var(--muted); line-height: 1; }
     .icon-btn:hover { border-color: var(--gold); background: var(--bg); }
     .icon-btn.done { border-color: var(--green); background: var(--green-bg); color: var(--green); }
     .icon-btn.has-files { border-color: var(--blue); color: var(--blue); }
-    .notes-input {
-      border: 1.5px solid var(--border);
-      border-radius: 6px;
-      padding: 4px 8px;
-      font-family: sans-serif;
-      font-size: 11px;
-      background: var(--bg);
-      color: var(--text);
-      outline: none;
-      width: 130px;
-      transition: border-color var(--transition);
-    }
+    .notes-input { border: 1.5px solid var(--border); border-radius: 6px; padding: 4px 8px; font-family: sans-serif; font-size: 11px; background: var(--bg); color: var(--text); outline: none; width: 130px; transition: border-color var(--transition); }
     .notes-input:focus { border-color: var(--gold); }
     .first-year-badge { margin-left: 5px; font-size: 9px; background: var(--green-bg); color: var(--green); padding: 1px 5px; border-radius: 3px; font-family: sans-serif; font-weight: 700; vertical-align: middle; }
 
@@ -477,46 +266,16 @@
     .modal-desc { font-family: sans-serif; font-size: 12px; color: var(--muted); line-height: 1.6; margin: 10px 0 18px; padding: 10px 14px; background: var(--bg); border-radius: 8px; border: 1px solid var(--border); }
     .modal-section { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--border); }
     .modal-section-title { font-family: sans-serif; font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 10px; }
-    .notes-area {
-      width: 100%;
-      border: 1.5px solid var(--border);
-      border-radius: 8px;
-      padding: 10px 13px;
-      font-family: sans-serif;
-      font-size: 13px;
-      background: var(--bg);
-      color: var(--text);
-      outline: none;
-      resize: vertical;
-      min-height: 90px;
-      transition: border-color var(--transition);
-    }
+    .notes-area { width: 100%; border: 1.5px solid var(--border); border-radius: 8px; padding: 10px 13px; font-family: sans-serif; font-size: 13px; background: var(--bg); color: var(--text); outline: none; resize: vertical; min-height: 90px; transition: border-color var(--transition); }
     .notes-area:focus { border-color: var(--gold); }
-    .upload-zone {
-      border: 2px dashed var(--border);
-      border-radius: 10px;
-      padding: 22px;
-      text-align: center;
-      cursor: pointer;
-      transition: all var(--transition);
-      position: relative;
-      margin-bottom: 12px;
-    }
+    .upload-zone { border: 2px dashed var(--border); border-radius: 10px; padding: 22px; text-align: center; cursor: pointer; transition: all var(--transition); position: relative; margin-bottom: 12px; }
     .upload-zone:hover { border-color: var(--gold); background: var(--bg); }
     .upload-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
     .upload-icon { font-size: 26px; margin-bottom: 6px; }
     .upload-text { font-family: sans-serif; font-size: 12px; color: var(--muted); }
     .upload-text strong { color: var(--blue); }
     .file-list { display: flex; flex-direction: column; gap: 7px; }
-    .file-item {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 9px 12px;
-      background: var(--bg);
-      border-radius: 8px;
-      border: 1px solid var(--border);
-    }
+    .file-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: var(--bg); border-radius: 8px; border: 1px solid var(--border); }
     .file-icon { font-size: 20px; flex-shrink: 0; }
     .file-info { flex: 1; min-width: 0; }
     .file-name { font-family: sans-serif; font-size: 12px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -552,6 +311,8 @@
     .badge { display: inline-flex; align-items: center; justify-content: center; background: var(--red); color: white; font-family: sans-serif; font-size: 9px; font-weight: 700; width: 16px; height: 16px; border-radius: 50%; margin-left: 4px; vertical-align: middle; }
     .empty-state { text-align: center; padding: 44px; color: var(--muted); font-family: sans-serif; }
     .empty-icon { font-size: 36px; margin-bottom: 10px; }
+    .loading-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: linear-gradient(135deg, var(--navy) 0%, #1a3260 60%, #0a1628 100%); }
+    .loading-text { color: rgba(255,255,255,0.6); font-family: sans-serif; font-size: 14px; }
 
     @media (max-width: 960px) { .stats-bar { grid-template-columns: repeat(3,1fr); } }
     @media (max-width: 640px) { .stats-bar { grid-template-columns: repeat(2,1fr); } .main { padding: 14px; } }
@@ -561,6 +322,13 @@
 <div id="root"></div>
 <script type="text/babel">
 const { useState, useMemo, useEffect, useCallback, useRef } = React;
+
+/* ═══════════════════════════════════════════════
+   SUPABASE
+═══════════════════════════════════════════════ */
+const SUPABASE_URL = 'https://vhrwgzgkadthrefzltoi.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZocndnemdrYWR0aHJlZnpsdG9pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyMDA3ODAsImV4cCI6MjA5Njc3Njc4MH0.kvJGofVsHBoI_yEgznSGtcmWIQkV0VC4CN3-A-joV10';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 /* ═══════════════════════════════════════════════
    DATA
@@ -637,12 +405,10 @@ const FIRMS = [
   { id:52, name:'Squire Patton Boggs',   type:'intl',     tl:'International',  prog:'Summer Vacation Scheme',      opens:'2026-10-01', closes:'2027-01-20', dur:'2 weeks',       pay:'Competitive',loc:'London / Birmingham',   fy:false, url:'https://www.squirepattonboggs.com/en/careers/students', desc:'Broad international firm with strong public policy, regulatory and corporate practices.' },
   { id:53, name:'Gowling WLG',           type:'intl',     tl:'International',  prog:'Summer Vacation Scheme',      opens:'2026-10-01', closes:'2027-01-15', dur:'2 weeks',       pay:'Competitive',loc:'London / Birmingham',   fy:false, url:'https://gowlingwlg.com/en/careers/students/', desc:'Canada-headquartered international firm. Particularly strong in IP, tech and automotive.' },
   { id:54, name:'Osborne Clarke',        type:'intl',     tl:'International',  prog:'Summer Vacation Scheme',      opens:'2026-10-01', closes:'2027-01-10', dur:'2 weeks',       pay:'Competitive',loc:'London / Bristol / Reading',fy:false, url:'https://www.osborneclarke.com/careers/students/vacation-scheme', desc:'Sector-focused firm, particularly strong in tech, energy and real estate. Multiple UK offices.' },
-  // ── DLA Piper ──
   { id:55, name:'DLA Piper',             type:'intl',     tl:'International',  prog:'Summer Internship',           opens:'2026-09-01', closes:'2027-01-31', dur:'3 weeks',       pay:'Paid',      loc:'Multiple UK',           fy:false, url:'https://careers.dlapiper.com/early-careers/europe/uk/summer-internship.html', desc:'Gateway to the International Training Programme. Multiple UK office locations.' },
   { id:56, name:'Eversheds Sutherland',  type:'intl',     tl:'International',  prog:'Summer Vacation Scheme',      opens:'2026-09-01', closes:'2027-01-26', dur:'2 weeks',       pay:'Competitive',loc:'Multiple UK',           fy:false, url:'https://www.eversheds-sutherland.com/en/united-kingdom/careers/careers-page/students-and-recent-graduates/student-and-graduate-applications', desc:'Large international firm with offices across multiple UK cities.' },
   { id:57, name:'Pinsent Masons',        type:'intl',     tl:'International',  prog:'Summer Vacation Scheme',      opens:'2026-10-01', closes:'2027-01-17', dur:'2 weeks',       pay:'Competitive',loc:'Multiple UK',           fy:false, url:'https://www.pinsentmasons.com/careers/students/vacation-scheme', desc:'Leading in infrastructure, energy and technology. Strong regional UK presence.' },
   { id:58, name:'Addleshaw Goddard',     type:'intl',     tl:'International',  prog:'Summer Vacation Scheme',      opens:'2026-09-01', closes:'2026-12-31', dur:'2 weeks',       pay:'Competitive',loc:'London / Leeds / Manchester',fy:false, url:'https://www.addleshawgoddard.com/en/careers/students-and-graduates/', desc:'Leading corporate and finance firm with strong UK regional presence. Recruits exclusively from scheme.' },
-  // ── Other ──
   { id:59, name:'Bird & Bird',           type:'intl',     tl:'International',  prog:'Summer Vacation Scheme',      opens:'2026-10-01', closes:'2027-01-15', dur:'2 weeks',       pay:'Competitive',loc:'London',              fy:false, url:'https://www.twobirds.com/en/careers/students-and-graduates/vacation-schemes', desc:'Leading technology, media and sport law practice. Growing life sciences and pharma practice.' },
   { id:60, name:'Taylor Wessing',        type:'intl',     tl:'International',  prog:'Summer Vacation Scheme',      opens:'2026-10-01', closes:'2027-01-10', dur:'2 weeks',       pay:'Competitive',loc:'London',              fy:false, url:'https://www.taylorwessing.com/en/join-us/students-and-graduates/vacation-schemes', desc:'Technology and innovation focused firm with strong private equity and IP practices.' },
   { id:61, name:'Clyde & Co',            type:'intl',     tl:'International',  prog:'Summer Vacation Scheme',      opens:'2026-09-01', closes:'2027-01-20', dur:'2 weeks',       pay:'Competitive',loc:'London',              fy:false, url:'https://www.clydeco.com/en/careers/students-and-graduates', desc:'Leading global firm in insurance, transport, energy and natural resources.' },
@@ -672,98 +438,130 @@ const SHORT_MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct',
 const DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
 /* ═══════════════════════════════════════════════
-   STORAGE UTILITIES
+   SUPABASE DATA FUNCTIONS
 ═══════════════════════════════════════════════ */
-async function hashPwd(pwd) {
-  const data = new TextEncoder().encode(pwd + ':law_salt_2027');
-  const buf = await crypto.subtle.digest('SHA-256', data);
-  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+function baseState() {
+  const s = {};
+  FIRMS.forEach(f => { s[f.id] = { stage: 'not-started', completed: false, notes: '' }; });
+  return s;
 }
-const K = {
-  users: 'lt_users',
-  session: 'lt_session',
-  dark: 'lt_dark',
-  state: e => `lt_s_${e}`,
-  files: e => `lt_f_${e}`,
-};
-const j = (s,fb) => { try { return JSON.parse(localStorage.getItem(s)||'null')||fb; } catch(e){ return fb; } };
-const getUsers  = ()    => j(K.users, {});
-const saveUsers = u     => localStorage.setItem(K.users, JSON.stringify(u));
-const getSession= ()    => j(K.session, null);
-const setSession= u     => localStorage.setItem(K.session, JSON.stringify(u));
-const clearSession=()   => localStorage.removeItem(K.session);
-const getDark   = ()    => localStorage.getItem(K.dark)==='1';
-const setDark   = v     => { localStorage.setItem(K.dark, v?'1':'0'); };
-function getUserState(email) {
-  const saved = j(K.state(email), null);
-  const base = {};
-  FIRMS.forEach(f => { base[f.id] = { stage:'not-started', completed:false, notes:'' }; });
-  return saved ? { ...base, ...saved } : base;
+
+async function loadStates(userId) {
+  const { data, error } = await sb.from('firm_states').select('firm_id,stage,completed,notes').eq('user_id', userId);
+  if (error) throw error;
+  const state = baseState();
+  (data || []).forEach(row => {
+    state[row.firm_id] = { stage: row.stage, completed: row.completed, notes: row.notes || '' };
+  });
+  return state;
 }
-const saveUserState = (email, s) => localStorage.setItem(K.state(email), JSON.stringify(s));
-const getUserFiles  = email    => j(K.files(email), {});
-const saveUserFiles = (email, f) => localStorage.setItem(K.files(email), JSON.stringify(f));
+
+async function upsertState(userId, firmId, patch) {
+  const { error } = await sb.from('firm_states').upsert(
+    { user_id: userId, firm_id: firmId, stage: patch.stage, completed: patch.completed, notes: patch.notes, updated_at: new Date().toISOString() },
+    { onConflict: 'user_id,firm_id' }
+  );
+  if (error) console.error('upsert error:', error);
+}
+
+async function loadFiles(userId, firmId) {
+  const { data } = await sb.from('firm_files').select('id,name,file_type,size,storage_path,uploaded_at').eq('user_id', userId).eq('firm_id', firmId).order('uploaded_at');
+  return data || [];
+}
+
+async function loadFileCounts(userId) {
+  const { data } = await sb.from('firm_files').select('firm_id').eq('user_id', userId);
+  const counts = {};
+  (data || []).forEach(row => { counts[row.firm_id] = (counts[row.firm_id] || 0) + 1; });
+  return counts;
+}
+
+async function uploadFile(userId, firmId, file) {
+  const ext = file.name.split('.').pop();
+  const path = `${userId}/${firmId}/${Date.now()}.${ext}`;
+  const { error: upErr } = await sb.storage.from('firm-files').upload(path, file);
+  if (upErr) throw upErr;
+  const { data, error } = await sb.from('firm_files').insert({
+    user_id: userId, firm_id: firmId, name: file.name,
+    file_type: file.type, size: file.size, storage_path: path,
+    uploaded_at: new Date().toISOString().slice(0, 10)
+  }).select('id,name,file_type,size,storage_path,uploaded_at').single();
+  if (error) throw error;
+  return data;
+}
+
+async function downloadFile(storagePath, name) {
+  const { data, error } = await sb.storage.from('firm-files').download(storagePath);
+  if (error) throw error;
+  const url = URL.createObjectURL(data);
+  const a = document.createElement('a');
+  a.href = url; a.download = name; a.click();
+  URL.revokeObjectURL(url);
+}
+
+async function removeFile(fileId, storagePath) {
+  await sb.storage.from('firm-files').remove([storagePath]);
+  await sb.from('firm_files').delete().eq('id', fileId);
+}
 
 /* ═══════════════════════════════════════════════
    HELPERS
 ═══════════════════════════════════════════════ */
-const parseDate  = s => new Date(s+'T00:00:00');
-const formatDate = s => { const d=parseDate(s); return `${d.getDate()} ${SHORT_MONTHS[d.getMonth()]} ${d.getFullYear()}`; };
+const getDark    = () => localStorage.getItem('lt_dark') === '1';
+const parseDate  = s => new Date(s + 'T00:00:00');
+const formatDate = s => { const d = parseDate(s); return `${d.getDate()} ${SHORT_MONTHS[d.getMonth()]} ${d.getFullYear()}`; };
 function daysUntil(s) {
-  const t=new Date(); t.setHours(0,0,0,0);
-  const d=parseDate(s); d.setHours(0,0,0,0);
-  return Math.round((d-t)/86400000);
+  const t = new Date(); t.setHours(0,0,0,0);
+  const d = parseDate(s); d.setHours(0,0,0,0);
+  return Math.round((d - t) / 86400000);
 }
-function urgClass(s) { const d=daysUntil(s); if(d<0) return ''; if(d<=14) return 'urgent'; if(d<=30) return 'soon'; return ''; }
-const stageObj = v => STAGES.find(s=>s.v===v)||STAGES[0];
-function fmtBytes(n) { if(n<1024) return n+'B'; if(n<1048576) return (n/1024).toFixed(0)+'KB'; return (n/1048576).toFixed(1)+'MB'; }
+function urgClass(s) { const d = daysUntil(s); if (d < 0) return ''; if (d <= 14) return 'urgent'; if (d <= 30) return 'soon'; return ''; }
+const stageObj = v => STAGES.find(s => s.v === v) || STAGES[0];
+function fmtBytes(n) { if (n < 1024) return n + 'B'; if (n < 1048576) return (n/1024).toFixed(0) + 'KB'; return (n/1048576).toFixed(1) + 'MB'; }
 function fileIcon(type) {
-  if(type.includes('pdf')) return '📄';
-  if(type.includes('word')||type.includes('document')) return '📝';
-  if(type.includes('image')) return '🖼️';
-  if(type.includes('text')) return '📃';
+  if (type.includes('pdf')) return '📄';
+  if (type.includes('word') || type.includes('document')) return '📝';
+  if (type.includes('image')) return '🖼️';
+  if (type.includes('text')) return '📃';
   return '📎';
 }
 
 /* ═══════════════════════════════════════════════
-   AUTH COMPONENTS
+   AUTH PAGE
 ═══════════════════════════════════════════════ */
-function AuthPage({ onLogin }) {
-  const [tab, setTab] = useState('login');
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [pwd, setPwd] = useState('');
-  const [pwd2, setPwd2] = useState('');
-  const [err, setErr] = useState('');
+function AuthPage() {
+  const [tab, setTab]       = useState('login');
+  const [name, setName]     = useState('');
+  const [email, setEmail]   = useState('');
+  const [pwd, setPwd]       = useState('');
+  const [pwd2, setPwd2]     = useState('');
+  const [err, setErr]       = useState('');
+  const [msg, setMsg]       = useState('');
   const [loading, setLoading] = useState(false);
 
+  function reset() { setErr(''); setMsg(''); }
+
   async function login(e) {
-    e.preventDefault(); setErr(''); setLoading(true);
+    e.preventDefault(); reset(); setLoading(true);
     try {
-      const hash = await hashPwd(pwd);
-      const users = getUsers();
-      const user = users[email.toLowerCase().trim()];
-      if (!user || user.hash !== hash) { setErr('Incorrect email or password.'); return; }
-      const sess = { email: user.email, name: user.name };
-      setSession(sess); onLogin(sess);
+      const { error } = await sb.auth.signInWithPassword({ email: email.trim(), password: pwd });
+      if (error) setErr(error.message);
     } catch { setErr('Something went wrong. Please try again.'); }
     finally { setLoading(false); }
   }
 
   async function register(e) {
-    e.preventDefault(); setErr(''); setLoading(true);
+    e.preventDefault(); reset(); setLoading(true);
     try {
       if (!name.trim()) { setErr('Please enter your name.'); return; }
       if (pwd.length < 6) { setErr('Password must be at least 6 characters.'); return; }
       if (pwd !== pwd2) { setErr('Passwords do not match.'); return; }
-      const users = getUsers();
-      const key = email.toLowerCase().trim();
-      if (users[key]) { setErr('An account with this email already exists.'); return; }
-      const hash = await hashPwd(pwd);
-      users[key] = { email: key, name: name.trim(), hash, createdAt: new Date().toISOString() };
-      saveUsers(users);
-      const sess = { email: key, name: name.trim() };
-      setSession(sess); onLogin(sess);
+      const { data, error } = await sb.auth.signUp({
+        email: email.trim(), password: pwd,
+        options: { data: { name: name.trim() } }
+      });
+      if (error) { setErr(error.message); return; }
+      if (!data.session) setMsg('Account created! Check your email to confirm before signing in.');
     } catch { setErr('Something went wrong. Please try again.'); }
     finally { setLoading(false); }
   }
@@ -777,12 +575,13 @@ function AuthPage({ onLogin }) {
           <div className="auth-tagline">Summer 2027 · First Year Guide</div>
         </div>
         <div className="auth-tabs">
-          <button className={`auth-tab ${tab==='login'?'active':''}`} onClick={()=>{setTab('login');setErr('');}}>Sign In</button>
-          <button className={`auth-tab ${tab==='register'?'active':''}`} onClick={()=>{setTab('register');setErr('');}}>Create Account</button>
+          <button className={`auth-tab ${tab==='login'?'active':''}`} onClick={()=>{setTab('login');reset();}}>Sign In</button>
+          <button className={`auth-tab ${tab==='register'?'active':''}`} onClick={()=>{setTab('register');reset();}}>Create Account</button>
         </div>
         <div className="auth-body">
           {err && <div className="auth-error">{err}</div>}
-          {tab==='login' ? (
+          {msg && <div className="auth-success">{msg}</div>}
+          {tab === 'login' ? (
             <form onSubmit={login}>
               <div className="auth-field">
                 <label className="auth-label">Email</label>
@@ -792,7 +591,7 @@ function AuthPage({ onLogin }) {
                 <label className="auth-label">Password</label>
                 <input className="auth-input" type="password" required value={pwd} onChange={e=>setPwd(e.target.value)} placeholder="••••••••" />
               </div>
-              <button className="auth-btn" type="submit" disabled={loading}>{loading?'Signing in…':'Sign In'}</button>
+              <button className="auth-btn" type="submit" disabled={loading}>{loading ? 'Signing in…' : 'Sign In'}</button>
             </form>
           ) : (
             <form onSubmit={register}>
@@ -812,7 +611,7 @@ function AuthPage({ onLogin }) {
                 <label className="auth-label">Confirm Password</label>
                 <input className="auth-input" type="password" required value={pwd2} onChange={e=>setPwd2(e.target.value)} placeholder="Repeat password" />
               </div>
-              <button className="auth-btn" type="submit" disabled={loading}>{loading?'Creating account…':'Create Account'}</button>
+              <button className="auth-btn" type="submit" disabled={loading}>{loading ? 'Creating account…' : 'Create Account'}</button>
             </form>
           )}
         </div>
@@ -824,24 +623,31 @@ function AuthPage({ onLogin }) {
 /* ═══════════════════════════════════════════════
    SETTINGS MODAL
 ═══════════════════════════════════════════════ */
-function SettingsModal({ user, dark, onDark, onClose, onLogout }) {
+function SettingsModal({ user, dark, onDark, onClose }) {
   const [changePwd, setChangePwd] = useState(false);
-  const [oldPwd, setOldPwd] = useState(''); const [newPwd, setNewPwd] = useState(''); const [newPwd2, setNewPwd2] = useState('');
-  const [pwdMsg, setPwdMsg] = useState('');
+  const [oldPwd, setOldPwd]       = useState('');
+  const [newPwd, setNewPwd]       = useState('');
+  const [newPwd2, setNewPwd2]     = useState('');
+  const [pwdMsg, setPwdMsg]       = useState('');
+  const userName = user.user_metadata?.name || user.email;
 
   async function handleChangePwd(e) {
     e.preventDefault(); setPwdMsg('');
     try {
-      const users = getUsers(); const u = users[user.email];
-      const oldHash = await hashPwd(oldPwd);
-      if (u.hash !== oldHash) { setPwdMsg('Current password is incorrect.'); return; }
+      const { error: authErr } = await sb.auth.signInWithPassword({ email: user.email, password: oldPwd });
+      if (authErr) { setPwdMsg('Current password is incorrect.'); return; }
       if (newPwd.length < 6) { setPwdMsg('New password must be at least 6 characters.'); return; }
       if (newPwd !== newPwd2) { setPwdMsg('New passwords do not match.'); return; }
-      u.hash = await hashPwd(newPwd);
-      saveUsers(users);
+      const { error } = await sb.auth.updateUser({ password: newPwd });
+      if (error) { setPwdMsg(error.message); return; }
       setPwdMsg('✓ Password updated successfully.');
       setOldPwd(''); setNewPwd(''); setNewPwd2('');
     } catch { setPwdMsg('Something went wrong.'); }
+  }
+
+  async function handleLogout() {
+    await sb.auth.signOut();
+    onClose();
   }
 
   return (
@@ -854,7 +660,7 @@ function SettingsModal({ user, dark, onDark, onClose, onLogout }) {
         <div className="modal-body">
           <div className="settings-section">
             <div className="settings-label">Account</div>
-            <div className="info-row"><span className="info-row-key">Name</span><span className="info-row-val">{user.name}</span></div>
+            <div className="info-row"><span className="info-row-key">Name</span><span className="info-row-val">{userName}</span></div>
             <div className="info-row"><span className="info-row-key">Email</span><span className="info-row-val">{user.email}</span></div>
           </div>
           <div className="settings-section">
@@ -882,7 +688,7 @@ function SettingsModal({ user, dark, onDark, onClose, onLogout }) {
           </div>
           <div className="settings-section">
             <div className="settings-label">Account Actions</div>
-            <button className="danger-btn" onClick={onLogout}>Sign Out</button>
+            <button className="danger-btn" onClick={handleLogout}>Sign Out</button>
           </div>
         </div>
       </div>
@@ -891,48 +697,50 @@ function SettingsModal({ user, dark, onDark, onClose, onLogout }) {
 }
 
 /* ═══════════════════════════════════════════════
-   FIRM MODAL (detail + notes + file upload)
+   FIRM MODAL
 ═══════════════════════════════════════════════ */
-function FirmModal({ firm, userEmail, appState, onStateChange, onClose }) {
-  const st = appState[firm.id] || { stage:'not-started', completed:false, notes:'' };
-  const [notes, setNotes] = useState(st.notes||'');
-  const [files, setFiles] = useState(() => { const f=getUserFiles(userEmail); return f[firm.id]||[]; });
+function FirmModal({ firm, userId, appState, onStateChange, onClose, onFilesChanged }) {
+  const st = appState[firm.id] || { stage: 'not-started', completed: false, notes: '' };
+  const [notes, setNotes]         = useState(st.notes || '');
+  const [files, setFiles]         = useState([]);
+  const [filesLoading, setFilesLoading] = useState(true);
   const [uploadErr, setUploadErr] = useState('');
-  const fileRef = useRef();
+  const [uploading, setUploading] = useState(false);
+  const notesTimer = useRef();
 
-  function saveNotes() {
-    onStateChange(firm.id, 'notes', notes);
+  useEffect(() => {
+    loadFiles(userId, firm.id).then(f => { setFiles(f); setFilesLoading(false); });
+  }, []);
+
+  function handleNotesChange(val) {
+    setNotes(val);
+    clearTimeout(notesTimer.current);
+    notesTimer.current = setTimeout(() => onStateChange(firm.id, 'notes', val), 800);
   }
 
-  function handleFile(e) {
+  async function handleFile(e) {
     const file = e.target.files[0];
     if (!file) return;
-    if (file.size > 5*1024*1024) { setUploadErr('File too large. Maximum size is 5MB.'); return; }
-    setUploadErr('');
-    const reader = new FileReader();
-    reader.onload = ev => {
-      const entry = { id: Date.now().toString(), name: file.name, type: file.type, size: file.size, data: ev.target.result, uploadedAt: new Date().toISOString().slice(0,10) };
-      const allFiles = getUserFiles(userEmail);
-      const firmFiles = [...(allFiles[firm.id]||[]), entry];
-      allFiles[firm.id] = firmFiles;
-      saveUserFiles(userEmail, allFiles);
-      setFiles(firmFiles);
-    };
-    reader.readAsDataURL(file);
-    e.target.value = '';
+    if (file.size > 50 * 1024 * 1024) { setUploadErr('File too large. Maximum is 50MB.'); return; }
+    setUploadErr(''); setUploading(true);
+    try {
+      const entry = await uploadFile(userId, firm.id, file);
+      setFiles(prev => [...prev, entry]);
+      onFilesChanged();
+    } catch(err) {
+      setUploadErr('Upload failed: ' + (err.message || 'unknown error'));
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
   }
 
-  function deleteFile(id) {
-    const allFiles = getUserFiles(userEmail);
-    const firmFiles = (allFiles[firm.id]||[]).filter(f=>f.id!==id);
-    allFiles[firm.id] = firmFiles;
-    saveUserFiles(userEmail, allFiles);
-    setFiles(firmFiles);
-  }
-
-  function downloadFile(f) {
-    const a = document.createElement('a');
-    a.href = f.data; a.download = f.name; a.click();
+  async function handleDelete(fileId, storagePath) {
+    try {
+      await removeFile(fileId, storagePath);
+      setFiles(prev => prev.filter(f => f.id !== fileId));
+      onFilesChanged();
+    } catch(err) { console.error('Delete failed:', err); }
   }
 
   return (
@@ -949,7 +757,7 @@ function FirmModal({ firm, userEmail, appState, onStateChange, onClose }) {
         <div className="modal-body">
           <div className="modal-row"><span className="modal-key">Programme</span><span className="modal-val">{firm.prog}</span></div>
           <div className="modal-row"><span className="modal-key">Opens</span><span className="modal-val">{formatDate(firm.opens)}</span></div>
-          <div className="modal-row"><span className="modal-key">Deadline</span><span className="modal-val" style={{color: daysUntil(firm.closes)<0?'var(--muted)': daysUntil(firm.closes)<=14?'var(--red)':'var(--text)'}}>{formatDate(firm.closes)}{daysUntil(firm.closes)>0&&` (${daysUntil(firm.closes)} days)`}{daysUntil(firm.closes)<0&&' — Closed'}</span></div>
+          <div className="modal-row"><span className="modal-key">Deadline</span><span className="modal-val" style={{color:daysUntil(firm.closes)<0?'var(--muted)':daysUntil(firm.closes)<=14?'var(--red)':'var(--text)'}}>{formatDate(firm.closes)}{daysUntil(firm.closes)>0&&` (${daysUntil(firm.closes)} days)`}{daysUntil(firm.closes)<0&&' — Closed'}</span></div>
           <div className="modal-row"><span className="modal-key">Duration</span><span className="modal-val">{firm.dur}</span></div>
           <div className="modal-row"><span className="modal-key">Stipend</span><span className="modal-val">{firm.pay}</span></div>
           <div className="modal-row"><span className="modal-key">Location</span><span className="modal-val">{firm.loc}</span></div>
@@ -959,30 +767,30 @@ function FirmModal({ firm, userEmail, appState, onStateChange, onClose }) {
 
           <div className="modal-section">
             <div className="modal-section-title">Notes & Interview Prep</div>
-            <textarea className="notes-area" value={notes} onChange={e=>setNotes(e.target.value)} onBlur={saveNotes} placeholder="Add research notes, interview prep, key contacts, or anything else about this firm…" />
+            <textarea className="notes-area" value={notes} onChange={e=>handleNotesChange(e.target.value)} placeholder="Add research notes, interview prep, key contacts, or anything else about this firm…" />
           </div>
 
           <div className="modal-section">
-            <div className="modal-section-title">Files ({files.length})</div>
+            <div className="modal-section-title">Files ({filesLoading ? '…' : files.length})</div>
             <div className="upload-zone">
-              <input type="file" ref={fileRef} onChange={handleFile} accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg" />
-              <div className="upload-icon">📎</div>
-              <div className="upload-text"><strong>Click to upload</strong> or drag and drop</div>
-              <div className="upload-text" style={{marginTop:3}}>PDF, Word, TXT, Images — max 5MB</div>
+              <input type="file" onChange={handleFile} disabled={uploading} />
+              <div className="upload-icon">{uploading ? '⏳' : '📎'}</div>
+              <div className="upload-text"><strong>{uploading ? 'Uploading…' : 'Click to upload'}</strong>{!uploading && ' or drag and drop'}</div>
+              <div className="upload-text" style={{marginTop:3}}>PDF, Word, TXT, Images — max 50MB</div>
             </div>
             {uploadErr && <div className="upload-warning">⚠️ {uploadErr}</div>}
             {files.length > 0 && (
               <div className="file-list">
                 {files.map(f => (
                   <div key={f.id} className="file-item">
-                    <div className="file-icon">{fileIcon(f.type)}</div>
+                    <div className="file-icon">{fileIcon(f.file_type || '')}</div>
                     <div className="file-info">
                       <div className="file-name">{f.name}</div>
-                      <div className="file-meta">{fmtBytes(f.size)} · Uploaded {f.uploadedAt}</div>
+                      <div className="file-meta">{fmtBytes(f.size)} · {f.uploaded_at}</div>
                     </div>
                     <div className="file-actions">
-                      <button className="file-btn" onClick={()=>downloadFile(f)}>Download</button>
-                      <button className="file-btn del" onClick={()=>deleteFile(f.id)}>Delete</button>
+                      <button className="file-btn" onClick={()=>downloadFile(f.storage_path, f.name)}>Download</button>
+                      <button className="file-btn del" onClick={()=>handleDelete(f.id, f.storage_path)}>Delete</button>
                     </div>
                   </div>
                 ))}
@@ -999,24 +807,17 @@ function FirmModal({ firm, userEmail, appState, onStateChange, onClose }) {
    STAT BAR
 ═══════════════════════════════════════════════ */
 function StatBar({ appState }) {
-  const total = FIRMS.length;
-  const applied = Object.values(appState).filter(s=>['applied','online-test','first-interview','second-interview','ac','offer'].includes(s.stage)).length;
-  const interviews = Object.values(appState).filter(s=>['first-interview','second-interview','ac'].includes(s.stage)).length;
-  const acs = Object.values(appState).filter(s=>s.stage==='ac').length;
-  const offers = Object.values(appState).filter(s=>s.stage==='offer').length;
-  const rejected = Object.values(appState).filter(s=>s.stage==='rejected').length;
-  const pct = total>0 ? Math.round(applied/total*100) : 0;
+  const total     = FIRMS.length;
+  const applied   = Object.values(appState).filter(s => ['applied','online-test','first-interview','second-interview','ac','offer'].includes(s.stage)).length;
+  const interviews= Object.values(appState).filter(s => ['first-interview','second-interview','ac'].includes(s.stage)).length;
+  const acs       = Object.values(appState).filter(s => s.stage === 'ac').length;
+  const offers    = Object.values(appState).filter(s => s.stage === 'offer').length;
+  const rejected  = Object.values(appState).filter(s => s.stage === 'rejected').length;
+  const pct = total > 0 ? Math.round(applied / total * 100) : 0;
   return (
     <>
       <div className="stats-bar">
-        {[
-          [total,'Total Firms',''],
-          [applied,'Applied','blue'],
-          [interviews,'Interviews','orange'],
-          [acs,'Assess. Centres','purple'],
-          [offers,'Offers','green'],
-          [rejected,'Rejected','red'],
-        ].map(([n,l,c])=>(
+        {[[total,'Total Firms',''],[applied,'Applied','blue'],[interviews,'Interviews','orange'],[acs,'Assess. Centres','purple'],[offers,'Offers','green'],[rejected,'Rejected','red']].map(([n,l,c]) => (
           <div key={l} className={`stat-card ${c}`}>
             <div className="stat-num">{n}</div>
             <div className="stat-label">{l}</div>
@@ -1036,13 +837,18 @@ function StatBar({ appState }) {
 /* ═══════════════════════════════════════════════
    TRACKER VIEW
 ═══════════════════════════════════════════════ */
-function TrackerView({ appState, setAppState, user }) {
-  const [filter, setFilter] = useState('all');
-  const [search, setSearch] = useState('');
-  const [sortCol, setSortCol] = useState('closes');
-  const [sortDir, setSortDir] = useState(1);
-  const [modal, setModal] = useState(null);
-  const userFiles = getUserFiles(user.email);
+function TrackerView({ appState, setAppState, userId }) {
+  const [filter, setFilter]     = useState('all');
+  const [search, setSearch]     = useState('');
+  const [sortCol, setSortCol]   = useState('closes');
+  const [sortDir, setSortDir]   = useState(1);
+  const [modal, setModal]       = useState(null);
+  const [fileCounts, setFileCounts] = useState({});
+  const saveTimers = useRef({});
+
+  useEffect(() => {
+    loadFileCounts(userId).then(setFileCounts);
+  }, [userId]);
 
   const FILTERS = [
     {k:'all',l:'All Firms'}, {k:'first-year',l:'1st Year Only'},
@@ -1052,45 +858,52 @@ function TrackerView({ appState, setAppState, user }) {
 
   const filtered = useMemo(() => {
     let list = [...FIRMS];
-    if (filter==='first-year') list=list.filter(f=>f.fy);
-    else if (filter!=='all') list=list.filter(f=>f.type===filter);
-    if (search.trim()) { const q=search.toLowerCase(); list=list.filter(f=>f.name.toLowerCase().includes(q)||f.prog.toLowerCase().includes(q)||f.loc.toLowerCase().includes(q)); }
-    list.sort((a,b)=>{
-      let va,vb;
-      if(sortCol==='closes'){va=a.closes;vb=b.closes;}
-      else if(sortCol==='opens'){va=a.opens;vb=b.opens;}
-      else if(sortCol==='name'){va=a.name;vb=b.name;}
-      else if(sortCol==='stage'){va=stageObj(appState[a.id]?.stage||'not-started').l;vb=stageObj(appState[b.id]?.stage||'not-started').l;}
+    if (filter === 'first-year') list = list.filter(f => f.fy);
+    else if (filter !== 'all') list = list.filter(f => f.type === filter);
+    if (search.trim()) { const q = search.toLowerCase(); list = list.filter(f => f.name.toLowerCase().includes(q) || f.prog.toLowerCase().includes(q) || f.loc.toLowerCase().includes(q)); }
+    list.sort((a, b) => {
+      let va, vb;
+      if (sortCol==='closes'){va=a.closes;vb=b.closes;}
+      else if (sortCol==='opens'){va=a.opens;vb=b.opens;}
+      else if (sortCol==='name'){va=a.name;vb=b.name;}
+      else if (sortCol==='stage'){va=stageObj(appState[a.id]?.stage||'not-started').l;vb=stageObj(appState[b.id]?.stage||'not-started').l;}
       else {va=a[sortCol]||'';vb=b[sortCol]||'';}
-      return va<vb?-sortDir:va>vb?sortDir:0;
+      return va < vb ? -sortDir : va > vb ? sortDir : 0;
     });
     return list;
   }, [filter, search, appState, sortCol, sortDir]);
 
   function update(id, field, val) {
     setAppState(prev => {
-      const next = {...prev, [id]: {...prev[id], [field]: val}};
-      saveUserState(user.email, next);
+      const next = { ...prev, [id]: { ...prev[id], [field]: val } };
+      if (field === 'notes') {
+        clearTimeout(saveTimers.current[id]);
+        saveTimers.current[id] = setTimeout(() => upsertState(userId, id, next[id]), 800);
+      } else {
+        upsertState(userId, id, next[id]);
+      }
       return next;
     });
   }
 
+  function handleFilesChanged() {
+    loadFileCounts(userId).then(setFileCounts);
+  }
+
   function th(col, label) {
-    const active = sortCol===col;
-    return <th onClick={()=>{if(active)setSortDir(d=>-d);else{setSortCol(col);setSortDir(1);}}}>
-      {label}{active?(sortDir===1?' ↑':' ↓'):''}
-    </th>;
+    const active = sortCol === col;
+    return <th onClick={()=>{if(active)setSortDir(d=>-d);else{setSortCol(col);setSortDir(1);}}}>{label}{active?(sortDir===1?' ↑':' ↓'):''}</th>;
   }
 
   return (
     <div>
-      {modal && <FirmModal firm={modal} userEmail={user.email} appState={appState} onStateChange={update} onClose={()=>setModal(null)} />}
+      {modal && <FirmModal firm={modal} userId={userId} appState={appState} onStateChange={update} onClose={()=>setModal(null)} onFilesChanged={handleFilesChanged} />}
       <div className="section-header">
         <div className="section-title">Application Tracker <span style={{fontSize:13,color:'var(--muted)',fontFamily:'sans-serif',fontWeight:400,marginLeft:8}}>{filtered.length} firms</span></div>
         <input className="search-input" placeholder="Search firms, locations…" value={search} onChange={e=>setSearch(e.target.value)} />
       </div>
       <div className="filter-bar">
-        {FILTERS.map(f=><button key={f.k} className={`filter-chip ${filter===f.k?'active':''}`} onClick={()=>setFilter(f.k)}>{f.l}</button>)}
+        {FILTERS.map(f => <button key={f.k} className={`filter-chip ${filter===f.k?'active':''}`} onClick={()=>setFilter(f.k)}>{f.l}</button>)}
       </div>
       <div className="tracker-table">
         <table>
@@ -1107,12 +920,12 @@ function TrackerView({ appState, setAppState, user }) {
             <th>Done</th>
           </tr></thead>
           <tbody>
-            {filtered.map(firm=>{
-              const st = appState[firm.id]||{stage:'not-started',completed:false,notes:''};
+            {filtered.map(firm => {
+              const st = appState[firm.id] || { stage:'not-started', completed:false, notes:'' };
               const so = stageObj(st.stage);
-              const fc = (userFiles[firm.id]||[]).length;
+              const fc = fileCounts[firm.id] || 0;
               return (
-                <tr key={firm.id} className={st.completed?'completed':''}>
+                <tr key={firm.id} className={st.completed ? 'completed' : ''}>
                   <td>
                     <span className="firm-name" onClick={()=>setModal(firm)}>{firm.name}</span>
                     {firm.fy && <span className="first-year-badge">1Y</span>}
@@ -1128,7 +941,7 @@ function TrackerView({ appState, setAppState, user }) {
                   <td style={{fontSize:11,color:'var(--muted)',whiteSpace:'nowrap'}}>{firm.pay}</td>
                   <td className="no-strike">
                     <select className={`stage-select ${so.c}`} value={st.stage} onChange={e=>update(firm.id,'stage',e.target.value)}>
-                      {STAGES.map(s=><option key={s.v} value={s.v}>{s.l}</option>)}
+                      {STAGES.map(s => <option key={s.v} value={s.v}>{s.l}</option>)}
                     </select>
                   </td>
                   <td className="no-strike">
@@ -1141,7 +954,7 @@ function TrackerView({ appState, setAppState, user }) {
                   </td>
                   <td className="no-strike">
                     <button className={`icon-btn ${st.completed?'done':''}`} onClick={()=>update(firm.id,'completed',!st.completed)} title={st.completed?'Mark incomplete':'Mark complete'}>
-                      {st.completed?'✓':'○'}
+                      {st.completed ? '✓' : '○'}
                     </button>
                   </td>
                 </tr>
@@ -1160,18 +973,19 @@ function TrackerView({ appState, setAppState, user }) {
 ═══════════════════════════════════════════════ */
 function CalendarView({ appState }) {
   const today = new Date();
-  const [year, setYear] = useState(today.getFullYear());
+  const [year, setYear]   = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
   function prevM(){if(month===0){setMonth(11);setYear(y=>y-1);}else setMonth(m=>m-1);}
   function nextM(){if(month===11){setMonth(0);setYear(y=>y+1);}else setMonth(m=>m+1);}
   const firstDay = new Date(year,month,1).getDay();
-  const daysInM = new Date(year,month+1,0).getDate();
+  const daysInM  = new Date(year,month+1,0).getDate();
   const prevDays = new Date(year,month,0).getDate();
-  const cells=[]; for(let i=firstDay-1;i>=0;i--) cells.push({day:prevDays-i,cur:false});
+  const cells = [];
+  for(let i=firstDay-1;i>=0;i--) cells.push({day:prevDays-i,cur:false});
   for(let d=1;d<=daysInM;d++) cells.push({day:d,cur:true,date:new Date(year,month,d)});
   let nd=1; while(cells.length%7!==0) cells.push({day:nd++,cur:false});
-  const ds=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-  const todayS=ds(today);
+  const ds = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const todayS = ds(today);
   function eventsOn(d){const s=ds(d);const ev=[];FIRMS.forEach(f=>{const done=appState[f.id]?.completed;if(f.opens===s)ev.push({f,type:'opens',done});if(f.closes===s)ev.push({f,type:'closes',done});});return ev;}
   return (
     <div>
@@ -1189,14 +1003,14 @@ function CalendarView({ appState }) {
           <button className="cal-nav-btn" onClick={nextM}>›</button>
         </div>
         <div className="cal-grid">
-          {DAYS.map(d=><div key={d} className="cal-dow">{d}</div>)}
-          {cells.map((c,i)=>{
-            const evs=c.cur?eventsOn(c.date):[];
-            const isToday=c.cur&&ds(c.date)===todayS;
+          {DAYS.map(d => <div key={d} className="cal-dow">{d}</div>)}
+          {cells.map((c,i) => {
+            const evs = c.cur ? eventsOn(c.date) : [];
+            const isToday = c.cur && ds(c.date) === todayS;
             return (
               <div key={i} className={`cal-cell ${!c.cur?'other-month':''} ${isToday?'today':''}`}>
                 <div className="cal-day-num">{c.day}</div>
-                {evs.slice(0,3).map((ev,j)=>(
+                {evs.slice(0,3).map((ev,j) => (
                   <div key={j} className={`cal-event ${ev.type} ${ev.done?'done-event':''}`} title={`${ev.f.name} — ${ev.type==='opens'?'Opens':'Deadline'}`}>
                     {ev.type==='opens'?'▶ ':'⏰ '}{ev.f.name}
                   </div>
@@ -1215,15 +1029,15 @@ function CalendarView({ appState }) {
    TIMELINE VIEW
 ═══════════════════════════════════════════════ */
 function TimelineView({ appState }) {
-  const today=new Date(); today.setHours(0,0,0,0);
-  const events=[];
-  FIRMS.forEach(f=>{
+  const today = new Date(); today.setHours(0,0,0,0);
+  const events = [];
+  FIRMS.forEach(f => {
     events.push({date:f.opens,firm:f,type:'opens',label:`${f.name} — Applications Open`,detail:`${f.prog} · ${f.loc} · ${f.pay}`});
     events.push({date:f.closes,firm:f,type:'closes',label:`${f.name} — Deadline`,detail:`${f.prog} · ${f.loc} · ${f.pay}`});
   });
-  events.sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0);
-  const upcoming=events.filter(e=>{const d=parseDate(e.date);d.setHours(0,0,0,0);return d>=today;}).slice(0,80);
-  let lastDate=null;
+  events.sort((a,b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+  const upcoming = events.filter(e => { const d=parseDate(e.date); d.setHours(0,0,0,0); return d >= today; }).slice(0,80);
+  let lastDate = null;
   return (
     <div>
       <div className="section-header" style={{marginBottom:14}}>
@@ -1231,10 +1045,10 @@ function TimelineView({ appState }) {
         <span style={{fontFamily:'sans-serif',fontSize:12,color:'var(--muted)'}}>{upcoming.length} upcoming events</span>
       </div>
       <div className="timeline-container">
-        {upcoming.map((ev,i)=>{
-          const isNew=ev.date!==lastDate; lastDate=ev.date;
-          const done=appState[ev.firm.id]?.completed;
-          const du=daysUntil(ev.date);
+        {upcoming.map((ev,i) => {
+          const isNew = ev.date !== lastDate; lastDate = ev.date;
+          const done  = appState[ev.firm.id]?.completed;
+          const du    = daysUntil(ev.date);
           return (
             <div key={i} className="timeline-item">
               <div className="timeline-left">
@@ -1260,28 +1074,35 @@ function TimelineView({ appState }) {
 /* ═══════════════════════════════════════════════
    MAIN APP
 ═══════════════════════════════════════════════ */
-function MainApp({ user, onLogout }) {
-  const [tab, setTab] = useState('tracker');
-  const [appState, setAppState] = useState(() => getUserState(user.email));
-  const [dark, setDark] = useState(getDark);
+function MainApp({ user }) {
+  const [tab, setTab]           = useState('tracker');
+  const [appState, setAppState] = useState(null);
+  const [dark, setDark]         = useState(getDark);
   const [showSettings, setShowSettings] = useState(false);
+  const userName = user.user_metadata?.name || user.email.split('@')[0];
 
   useEffect(() => {
-    setDark(getDark());
     document.body.classList.toggle('dark', getDark());
-  }, []);
+    loadStates(user.id).then(setAppState).catch(console.error);
+  }, [user.id]);
 
   function toggleDark(v) {
     document.body.classList.toggle('dark', v);
     setDark(v);
-    localStorage.setItem(K.dark, v?'1':'0');
+    localStorage.setItem('lt_dark', v ? '1' : '0');
   }
 
-  const soonCount = FIRMS.filter(f=>{const d=daysUntil(f.closes);return d>=0&&d<=14;}).length;
+  if (!appState) return (
+    <div style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'calc(100vh - 62px)',fontFamily:'sans-serif',color:'var(--muted)'}}>
+      Loading your data…
+    </div>
+  );
+
+  const soonCount = FIRMS.filter(f => { const d = daysUntil(f.closes); return d >= 0 && d <= 14; }).length;
 
   return (
     <>
-      {showSettings && <SettingsModal user={user} dark={dark} onDark={toggleDark} onClose={()=>setShowSettings(false)} onLogout={()=>{clearSession();onLogout();}} />}
+      {showSettings && <SettingsModal user={user} dark={dark} onDark={toggleDark} onClose={()=>setShowSettings(false)} />}
       <div className="header">
         <div className="header-brand">
           <div className="header-logo">⚖</div>
@@ -1291,22 +1112,22 @@ function MainApp({ user, onLogout }) {
           </div>
         </div>
         <div style={{display:'flex',gap:5}}>
-          {[['tracker','Tracker'],['calendar','Calendar'],['timeline','Timeline']].map(([t,l])=>(
+          {[['tracker','Tracker'],['calendar','Calendar'],['timeline','Timeline']].map(([t,l]) => (
             <button key={t} className={`hbtn ${tab===t?'active':''}`} onClick={()=>setTab(t)}>
               {l}{t==='calendar'&&soonCount>0&&<span className="badge">{soonCount}</span>}
             </button>
           ))}
         </div>
         <div className="header-right">
-          <span className="header-user">Hi, {user.name.split(' ')[0]}</span>
+          <span className="header-user">Hi, {userName.split(' ')[0]}</span>
           <button className="hbtn icon" title="Settings" onClick={()=>setShowSettings(true)}>⚙</button>
         </div>
       </div>
       <div className="main">
         <StatBar appState={appState} />
-        {tab==='tracker'&&<TrackerView appState={appState} setAppState={setAppState} user={user}/>}
-        {tab==='calendar'&&<CalendarView appState={appState}/>}
-        {tab==='timeline'&&<TimelineView appState={appState}/>}
+        {tab==='tracker'  && <TrackerView appState={appState} setAppState={setAppState} userId={user.id} />}
+        {tab==='calendar' && <CalendarView appState={appState} />}
+        {tab==='timeline' && <TimelineView appState={appState} />}
       </div>
     </>
   );
@@ -1316,10 +1137,23 @@ function MainApp({ user, onLogout }) {
    ROOT
 ═══════════════════════════════════════════════ */
 function App() {
-  const [user, setUser] = useState(()=>getSession());
-  useEffect(()=>{ document.body.classList.toggle('dark', getDark()); },[]);
-  if (!user) return <AuthPage onLogin={u=>setUser(u)} />;
-  return <MainApp user={user} onLogout={()=>setUser(null)} />;
+  const [session, setSession] = useState(undefined); // undefined = checking
+
+  useEffect(() => {
+    document.body.classList.toggle('dark', getDark());
+    sb.auth.getSession().then(({ data: { session } }) => setSession(session));
+    const { data: { subscription } } = sb.auth.onAuthStateChange((_event, session) => setSession(session));
+    return () => subscription.unsubscribe();
+  }, []);
+
+  if (session === undefined) return (
+    <div className="loading-screen">
+      <div className="loading-text">Loading…</div>
+    </div>
+  );
+
+  if (!session) return <AuthPage />;
+  return <MainApp user={session.user} />;
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(<App/>);

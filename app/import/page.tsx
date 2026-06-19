@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Upload, FileText, Plug, CheckCircle, AlertCircle,
   Plus, Trash2, Loader2, Download, X, RefreshCw,
+  TrendingUp, TrendingDown, Pencil,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
@@ -12,8 +13,10 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
+import { PriceStatusBar } from "@/components/ui/PriceStatusBar";
 import { positionRepository, type UpsertPosition } from "@/lib/repositories";
 import type { PositionRow } from "@/lib/supabase";
+import { useLivePrices } from "@/lib/hooks/useLivePrices";
 
 type ParsedRow = {
   ticker: string;
@@ -29,7 +32,6 @@ function parseCSV(text: string): ParsedRow[] {
   const lines = text.trim().split(/\r?\n/);
   if (lines.length < 2) return [];
   const headers = lines[0].split(",").map((h) => h.trim().toLowerCase().replace(/\s+/g, "_"));
-
   return lines.slice(1).map((line) => {
     const vals: string[] = [];
     let cur = "";
@@ -40,25 +42,20 @@ function parseCSV(text: string): ParsedRow[] {
       else { cur += ch; }
     }
     vals.push(cur.trim());
-
     const get = (key: string) => vals[headers.indexOf(key)]?.trim() ?? "";
-
     const ticker = get("ticker").toUpperCase();
     const name = get("name") || ticker;
     const quantity = parseFloat(get("quantity"));
     const avg_cost = parseFloat(get("avg_cost"));
     const current_price = parseFloat(get("current_price"));
     const currency = (get("currency") || "GBP").toUpperCase();
-
     const errors: string[] = [];
     if (!ticker) errors.push("missing ticker");
     if (isNaN(quantity) || quantity <= 0) errors.push("invalid quantity");
     if (isNaN(avg_cost) || avg_cost < 0) errors.push("invalid avg_cost");
     if (isNaN(current_price) || current_price < 0) errors.push("invalid current_price");
-
     return {
-      ticker,
-      name,
+      ticker, name,
       quantity: isNaN(quantity) ? 0 : quantity,
       avg_cost: isNaN(avg_cost) ? 0 : avg_cost,
       current_price: isNaN(current_price) ? 0 : current_price,
@@ -84,22 +81,27 @@ function downloadTemplate() {
   URL.revokeObjectURL(url);
 }
 
+function fmt(n: number, decimals = 2) {
+  return n.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+}
+
 const CURRENCIES = ["GBP", "USD", "EUR", "AUD"];
 
 interface ManualFormProps {
+  initial?: Partial<UpsertPosition>;
   onSave: (data: UpsertPosition) => Promise<void>;
   onCancel: () => void;
   saving: boolean;
 }
 
-function ManualForm({ onSave, onCancel, saving }: ManualFormProps) {
-  const [ticker, setTicker] = useState("");
-  const [name, setName] = useState("");
-  const [quantity, setQuantity] = useState("");
-  const [avgCost, setAvgCost] = useState("");
-  const [currentPrice, setCurrentPrice] = useState("");
-  const [currency, setCurrency] = useState("GBP");
-  const [notes, setNotes] = useState("");
+function ManualForm({ initial, onSave, onCancel, saving }: ManualFormProps) {
+  const [ticker, setTicker] = useState(initial?.ticker ?? "");
+  const [name, setName] = useState(initial?.name ?? "");
+  const [quantity, setQuantity] = useState(initial?.quantity != null ? String(initial.quantity) : "");
+  const [avgCost, setAvgCost] = useState(initial?.avg_cost != null ? String(initial.avg_cost) : "");
+  const [currentPrice, setCurrentPrice] = useState(initial?.current_price != null ? String(initial.current_price) : "");
+  const [currency, setCurrency] = useState(initial?.currency ?? "GBP");
+  const [notes, setNotes] = useState(initial?.notes ?? "");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -122,7 +124,7 @@ function ManualForm({ onSave, onCancel, saving }: ManualFormProps) {
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="text-2xs text-muted uppercase tracking-wider block mb-1.5">Ticker *</label>
-          <input value={ticker} onChange={(e) => setTicker(e.target.value)} placeholder="AAPL" required className={`${inputClass} font-mono uppercase`} autoFocus />
+          <input value={ticker} onChange={(e) => setTicker(e.target.value)} placeholder="AAPL" required className={`${inputClass} font-mono uppercase`} autoFocus={!initial} />
         </div>
         <div>
           <label className="text-2xs text-muted uppercase tracking-wider block mb-1.5">Company Name</label>
@@ -152,7 +154,7 @@ function ManualForm({ onSave, onCancel, saving }: ManualFormProps) {
         </div>
         <div>
           <label className="text-2xs text-muted uppercase tracking-wider block mb-1.5">Notes</label>
-          <input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional notes..." className={inputClass} />
+          <input value={notes ?? ""} onChange={(e) => setNotes(e.target.value)} placeholder="Optional notes..." className={inputClass} />
         </div>
       </div>
       <div className="flex justify-end gap-3 pt-2 border-t border-border">
@@ -163,52 +165,154 @@ function ManualForm({ onSave, onCancel, saving }: ManualFormProps) {
   );
 }
 
-function PositionsTable({ positions, onDelete, deleting }: { positions: PositionRow[]; onDelete: (id: string) => void; deleting: string | null; }) {
-  const gainLoss = (row: PositionRow) => {
-    const cost = row.quantity * row.avg_cost;
-    const value = row.quantity * row.current_price;
-    const pl = value - cost;
-    const pct = cost > 0 ? (pl / cost) * 100 : 0;
-    return { pl, pct, value };
-  };
+function ConfirmDeleteModal({
+  row,
+  onConfirm,
+  onCancel,
+  deleting,
+}: {
+  row: PositionRow;
+  onConfirm: () => void;
+  onCancel: () => void;
+  deleting: boolean;
+}) {
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-secondary">
+        Are you sure you want to remove{" "}
+        <span className="font-mono font-semibold text-primary">{row.ticker}</span>{" "}
+        ({row.name}) from your portfolio? This cannot be undone.
+      </p>
+      <div className="flex justify-end gap-3 pt-2 border-t border-border">
+        <Button variant="ghost" size="sm" onClick={onCancel}>Cancel</Button>
+        <Button variant="primary" size="sm" loading={deleting} onClick={onConfirm}
+          className="bg-loss hover:bg-loss/80 border-loss/40">
+          Delete position
+        </Button>
+      </div>
+    </div>
+  );
+}
 
+function PositionsTable({
+  positions,
+  livePrices,
+  onEdit,
+  onDelete,
+}: {
+  positions: PositionRow[];
+  livePrices: ReturnType<typeof useLivePrices>["prices"];
+  onEdit: (row: PositionRow) => void;
+  onDelete: (row: PositionRow) => void;
+}) {
   return (
     <div className="overflow-x-auto rounded-xl border border-border">
       <table className="w-full text-xs">
         <thead>
           <tr className="border-b border-border bg-surface-2">
-            {["Ticker", "Name", "Qty", "Avg Cost", "Current", "Currency", "Value", "P&L", ""].map((h) => (
+            {["Ticker", "Name", "Qty", "Avg Cost", "Live Price", "Day", "Value", "Total P&L", ""].map((h) => (
               <th key={h} className="text-left px-4 py-3 text-2xs text-muted uppercase tracking-wider font-medium whitespace-nowrap">{h}</th>
             ))}
           </tr>
         </thead>
         <tbody>
           {positions.map((row) => {
-            const { pl, pct, value } = gainLoss(row);
+            const live = livePrices[row.ticker];
+            const price = live?.price ?? row.current_price;
+            const value = row.quantity * price;
+            const cost = row.quantity * row.avg_cost;
+            const pl = value - cost;
+            const plPct = cost > 0 ? (pl / cost) * 100 : 0;
             const isGain = pl >= 0;
+            const dayChange = live?.changePct ?? null;
+            const dayUp = dayChange !== null && dayChange >= 0;
+
             return (
-              <tr key={row.id} className="border-b border-border last:border-0 hover:bg-surface-2 transition-colors">
+              <tr key={row.id} className="group border-b border-border last:border-0 hover:bg-surface-2 transition-colors">
                 <td className="px-4 py-3 font-mono font-semibold text-primary">{row.ticker}</td>
-                <td className="px-4 py-3 text-secondary max-w-[160px] truncate">{row.name}</td>
+                <td className="px-4 py-3 text-secondary max-w-[140px] truncate">{row.name}</td>
                 <td className="px-4 py-3 font-mono text-secondary">{row.quantity.toLocaleString()}</td>
-                <td className="px-4 py-3 font-mono text-secondary">{row.avg_cost.toFixed(2)}</td>
-                <td className="px-4 py-3 font-mono text-secondary">{row.current_price.toFixed(2)}</td>
-                <td className="px-4 py-3 text-muted">{row.currency}</td>
-                <td className="px-4 py-3 font-mono text-primary">{value.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
+                <td className="px-4 py-3 font-mono text-secondary">{fmt(row.avg_cost)}</td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-mono font-semibold text-primary">{fmt(price)}</span>
+                    {live && <span className="text-2xs text-muted">{row.currency}</span>}
+                    {!live && <span className="text-2xs text-muted italic">stored</span>}
+                  </div>
+                </td>
+                <td className="px-4 py-3">
+                  {dayChange !== null ? (
+                    <div className={`flex items-center gap-1 font-mono font-medium text-xs ${dayUp ? "text-gain" : "text-loss"}`}>
+                      {dayUp ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                      {dayUp ? "+" : ""}{fmt(dayChange, 2)}%
+                    </div>
+                  ) : (
+                    <span className="text-muted">—</span>
+                  )}
+                </td>
+                <td className="px-4 py-3 font-mono text-primary">
+                  {value.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                </td>
                 <td className="px-4 py-3">
                   <span className={`font-mono font-medium ${isGain ? "text-gain" : "text-loss"}`}>
-                    {isGain ? "+" : ""}{pl.toLocaleString(undefined, { maximumFractionDigits: 0 })} ({isGain ? "+" : ""}{pct.toFixed(1)}%)
+                    {isGain ? "+" : ""}{pl.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                    <span className="text-2xs ml-1 opacity-70">({isGain ? "+" : ""}{fmt(plPct, 1)}%)</span>
                   </span>
                 </td>
                 <td className="px-4 py-3">
-                  <button onClick={() => onDelete(row.id)} disabled={deleting === row.id} className="p-1.5 rounded-lg text-muted hover:text-loss hover:bg-loss-dim transition-colors disabled:opacity-40">
-                    {deleting === row.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                  </button>
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => onEdit(row)}
+                      className="p-1.5 rounded-lg text-muted hover:text-accent hover:bg-accent/10 transition-colors"
+                      title="Edit position"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => onDelete(row)}
+                      className="p-1.5 rounded-lg text-muted hover:text-loss hover:bg-loss/10 transition-colors"
+                      title="Delete position"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </td>
               </tr>
             );
           })}
         </tbody>
+        {positions.length > 0 && (
+          <tfoot>
+            <tr className="border-t border-border bg-surface-2">
+              <td colSpan={6} className="px-4 py-3 text-2xs text-muted uppercase tracking-wider font-medium">Portfolio Total</td>
+              <td className="px-4 py-3 font-mono font-semibold text-primary">
+                {positions.reduce((sum, row) => {
+                  const price = livePrices[row.ticker]?.price ?? row.current_price;
+                  return sum + row.quantity * price;
+                }, 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              </td>
+              <td className="px-4 py-3">
+                {(() => {
+                  const totalCost = positions.reduce((s, r) => s + r.quantity * r.avg_cost, 0);
+                  const totalValue = positions.reduce((s, r) => {
+                    const price = livePrices[r.ticker]?.price ?? r.current_price;
+                    return s + r.quantity * price;
+                  }, 0);
+                  const pl = totalValue - totalCost;
+                  const pct = totalCost > 0 ? (pl / totalCost) * 100 : 0;
+                  const up = pl >= 0;
+                  return (
+                    <span className={`font-mono font-semibold ${up ? "text-gain" : "text-loss"}`}>
+                      {up ? "+" : ""}{pl.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                      <span className="text-2xs ml-1 opacity-70">({up ? "+" : ""}{fmt(pct, 1)}%)</span>
+                    </span>
+                  );
+                })()}
+              </td>
+              <td />
+            </tr>
+          </tfoot>
+        )}
       </table>
     </div>
   );
@@ -234,16 +338,23 @@ export default function ImportPage() {
 
   const [positions, setPositions] = useState<PositionRow[]>([]);
   const [loadingPositions, setLoadingPositions] = useState(true);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const [showManual, setShowManual] = useState(false);
+  const [editingRow, setEditingRow] = useState<PositionRow | null>(null);
   const [savingManual, setSavingManual] = useState(false);
+
+  const [deletingRow, setDeletingRow] = useState<PositionRow | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const [dragging, setDragging] = useState(false);
   const [parsedRows, setParsedRows] = useState<ParsedRow[] | null>(null);
   const [fileName, setFileName] = useState("");
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<{ count: number } | null>(null);
+
+  const tickers = positions.map((p) => p.ticker);
+  const { prices: livePrices, loading: priceLoading, lastUpdated, error: priceError, refresh: refreshPrices } =
+    useLivePrices(tickers);
 
   const loadPositions = useCallback(async () => {
     try {
@@ -290,7 +401,7 @@ export default function ImportPage() {
       setParsedRows(null);
       setFileName("");
       toast(`${valid.length} position${valid.length !== 1 ? "s" : ""} imported`, "success");
-      loadPositions();
+      await loadPositions();
     } catch (err) {
       toast((err as Error).message, "error");
     } finally {
@@ -303,11 +414,12 @@ export default function ImportPage() {
     try {
       const saved = await positionRepository.upsert(data);
       setPositions((prev) => {
-        const existing = prev.findIndex((p) => p.id === saved.id);
-        if (existing >= 0) { const next = [...prev]; next[existing] = saved; return next; }
+        const idx = prev.findIndex((p) => p.id === saved.id);
+        if (idx >= 0) { const next = [...prev]; next[idx] = saved; return next; }
         return [saved, ...prev];
       });
       setShowManual(false);
+      setEditingRow(null);
       toast(`${saved.ticker} saved`, "success");
     } catch (err) {
       toast((err as Error).message, "error");
@@ -316,16 +428,18 @@ export default function ImportPage() {
     }
   }
 
-  async function handleDelete(id: string) {
-    setDeletingId(id);
+  async function handleDeleteConfirm() {
+    if (!deletingRow) return;
+    setDeletingId(deletingRow.id);
     try {
-      await positionRepository.delete(id);
-      setPositions((prev) => prev.filter((p) => p.id !== id));
+      await positionRepository.delete(deletingRow.id);
+      setPositions((prev) => prev.filter((p) => p.id !== deletingRow.id));
       toast("Position removed", "success");
     } catch (err) {
       toast((err as Error).message, "error");
     } finally {
       setDeletingId(null);
+      setDeletingRow(null);
     }
   }
 
@@ -337,9 +451,21 @@ export default function ImportPage() {
   const errorRows = parsedRows?.filter((r) => r._error) ?? [];
   const validRows = parsedRows?.filter((r) => !r._error) ?? [];
 
+  const editInitial: Partial<UpsertPosition> | undefined = editingRow
+    ? {
+        ticker: editingRow.ticker,
+        name: editingRow.name,
+        quantity: editingRow.quantity,
+        avg_cost: editingRow.avg_cost,
+        current_price: editingRow.current_price,
+        currency: editingRow.currency,
+        notes: editingRow.notes,
+      }
+    : undefined;
+
   return (
     <AppShell title="Import Data" subtitle="Connect brokers and import portfolio data">
-      <div className="p-5 max-w-[1000px] mx-auto space-y-6">
+      <div className="p-5 max-w-[1100px] mx-auto space-y-6">
 
         <div>
           <h2 className="text-sm font-semibold text-secondary uppercase tracking-wider mb-4">Broker Connections</h2>
@@ -347,7 +473,13 @@ export default function ImportPage() {
             {BROKERS.map((broker, i) => {
               const cfg = STATUS_CONFIG[broker.status as keyof typeof STATUS_CONFIG];
               return (
-                <motion.div key={broker.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }} className="bg-surface border border-border rounded-xl p-4 flex items-start gap-4 hover:border-border-subtle transition-all">
+                <motion.div
+                  key={broker.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.07 }}
+                  className="bg-surface border border-border rounded-xl p-4 flex items-start gap-4 hover:border-border-subtle transition-all"
+                >
                   <span className="text-2xl shrink-0">{broker.logo}</span>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
@@ -356,7 +488,13 @@ export default function ImportPage() {
                     </div>
                     <p className="text-xs text-muted">{broker.description}</p>
                   </div>
-                  <Button variant={broker.status === "active" ? "secondary" : "ghost"} size="sm" disabled={broker.status === "coming" || broker.status === "placeholder"} icon={broker.status === "active" ? <Plug /> : undefined} onClick={() => handleBrokerAction(broker.id)}>
+                  <Button
+                    variant={broker.status === "active" ? "secondary" : "ghost"}
+                    size="sm"
+                    disabled={broker.status === "coming" || broker.status === "placeholder"}
+                    icon={broker.status === "active" ? <Plug /> : undefined}
+                    onClick={() => handleBrokerAction(broker.id)}
+                  >
                     {broker.status === "active" ? "Connect" : broker.status === "coming" ? "Soon" : "Setup"}
                   </Button>
                 </motion.div>
@@ -388,7 +526,15 @@ export default function ImportPage() {
             </AnimatePresence>
 
             {!parsedRows && (
-              <div onDragOver={(e) => { e.preventDefault(); setDragging(true); }} onDragLeave={() => setDragging(false)} onDrop={handleDrop} onClick={() => fileInputRef.current?.click()} className={`border-2 border-dashed rounded-xl p-10 text-center transition-all cursor-pointer ${dragging ? "border-accent bg-accent-glow" : "border-border hover:border-border-subtle hover:bg-surface-2"}`}>
+              <div
+                onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+                onDragLeave={() => setDragging(false)}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+                className={`border-2 border-dashed rounded-xl p-10 text-center transition-all cursor-pointer ${
+                  dragging ? "border-accent bg-accent-glow" : "border-border hover:border-border-subtle hover:bg-surface-2"
+                }`}
+              >
                 <div className="flex flex-col items-center gap-3">
                   <Upload className="w-10 h-10 text-muted" />
                   <div>
@@ -409,7 +555,9 @@ export default function ImportPage() {
                       <Badge variant="gain">{validRows.length} valid</Badge>
                       {errorRows.length > 0 && <Badge variant="loss">{errorRows.length} errors</Badge>}
                     </div>
-                    <button onClick={() => { setParsedRows(null); setFileName(""); }} className="p-1.5 rounded-lg text-muted hover:text-primary hover:bg-surface-2 transition-colors"><X className="w-4 h-4" /></button>
+                    <button onClick={() => { setParsedRows(null); setFileName(""); }} className="p-1.5 rounded-lg text-muted hover:text-primary hover:bg-surface-2 transition-colors">
+                      <X className="w-4 h-4" />
+                    </button>
                   </div>
                   <div className="overflow-x-auto rounded-xl border border-border max-h-72 overflow-y-auto">
                     <table className="w-full text-xs">
@@ -429,7 +577,11 @@ export default function ImportPage() {
                             <td className="px-3 py-2 font-mono text-secondary">{row.avg_cost}</td>
                             <td className="px-3 py-2 font-mono text-secondary">{row.current_price}</td>
                             <td className="px-3 py-2 text-muted">{row.currency}</td>
-                            <td className="px-3 py-2">{row._error ? <span className="text-loss text-2xs">{row._error}</span> : <CheckCircle className="w-3.5 h-3.5 text-gain" />}</td>
+                            <td className="px-3 py-2">
+                              {row._error
+                                ? <span className="text-loss text-2xs">{row._error}</span>
+                                : <CheckCircle className="w-3.5 h-3.5 text-gain" />}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -454,7 +606,7 @@ export default function ImportPage() {
         </Card>
 
         <div>
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-semibold text-secondary uppercase tracking-wider">
               Imported Positions
               {positions.length > 0 && <span className="ml-2 text-muted normal-case font-normal">({positions.length})</span>}
@@ -464,6 +616,18 @@ export default function ImportPage() {
               <Button variant="secondary" size="sm" icon={<Plus />} onClick={() => setShowManual(true)}>Add manually</Button>
             </div>
           </div>
+
+          {positions.length > 0 && (
+            <div className="mb-3">
+              <PriceStatusBar
+                loading={priceLoading}
+                lastUpdated={lastUpdated}
+                error={priceError}
+                onRefresh={refreshPrices}
+                count={positions.length}
+              />
+            </div>
+          )}
 
           {loadingPositions ? (
             <div className="flex items-center justify-center py-12 gap-3">
@@ -481,7 +645,12 @@ export default function ImportPage() {
             </div>
           ) : (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-              <PositionsTable positions={positions} onDelete={handleDelete} deleting={deletingId} />
+              <PositionsTable
+                positions={positions}
+                livePrices={livePrices}
+                onEdit={setEditingRow}
+                onDelete={setDeletingRow}
+              />
             </motion.div>
           )}
         </div>
@@ -489,6 +658,39 @@ export default function ImportPage() {
 
       <Modal open={showManual} onClose={() => setShowManual(false)} title="Add Position Manually" size="md">
         <ManualForm onSave={handleManualSave} onCancel={() => setShowManual(false)} saving={savingManual} />
+      </Modal>
+
+      <Modal
+        open={!!editingRow}
+        onClose={() => setEditingRow(null)}
+        title={`Edit ${editingRow?.ticker ?? "Position"}`}
+        size="md"
+      >
+        {editingRow && (
+          <ManualForm
+            key={editingRow.id}
+            initial={editInitial}
+            onSave={handleManualSave}
+            onCancel={() => setEditingRow(null)}
+            saving={savingManual}
+          />
+        )}
+      </Modal>
+
+      <Modal
+        open={!!deletingRow}
+        onClose={() => setDeletingRow(null)}
+        title="Delete Position"
+        size="sm"
+      >
+        {deletingRow && (
+          <ConfirmDeleteModal
+            row={deletingRow}
+            onConfirm={handleDeleteConfirm}
+            onCancel={() => setDeletingRow(null)}
+            deleting={deletingId === deletingRow.id}
+          />
+        )}
       </Modal>
     </AppShell>
   );

@@ -2,16 +2,18 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, StickyNote, AlertCircle, Loader2 } from "lucide-react";
+import { X, StickyNote, AlertCircle, Loader2, Pencil, Trash2 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { HoldingsTable } from "@/components/portfolio/HoldingsTable";
 import { AllocationChart } from "@/components/dashboard/AllocationChart";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { Modal } from "@/components/ui/Modal";
+import { Button } from "@/components/ui/Button";
 import { Stat } from "@/components/ui/Stat";
 import { PriceStatusBar } from "@/components/ui/PriceStatusBar";
 import { formatCurrency, formatPct, formatDate } from "@/lib/utils";
-import { positionRepository } from "@/lib/repositories";
+import { positionRepository, type UpsertPosition } from "@/lib/repositories";
 import { useLivePrices } from "@/lib/hooks/useLivePrices";
 import {
   mockPositions,
@@ -69,11 +71,97 @@ function rowsToPositions(
   });
 }
 
+const CURRENCIES = ["GBP", "USD", "EUR", "AUD"];
+
+function EditForm({
+  pos,
+  onSave,
+  onCancel,
+  saving,
+}: {
+  pos: Position;
+  onSave: (data: UpsertPosition) => Promise<void>;
+  onCancel: () => void;
+  saving: boolean;
+}) {
+  const [quantity, setQuantity] = useState(String(pos.quantity));
+  const [avgCost, setAvgCost] = useState(String(pos.avgCostBasis));
+  const [currentPrice, setCurrentPrice] = useState(String(pos.currentPrice));
+  const [currency, setCurrency] = useState(pos.currency);
+  const [name, setName] = useState(pos.name);
+  const [notes, setNotes] = useState(pos.notes ?? "");
+
+  const inputClass =
+    "w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-primary placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-accent/40 focus:border-accent/40 transition-all";
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    await onSave({
+      ticker: pos.ticker,
+      name: name.trim() || pos.ticker,
+      quantity: parseFloat(quantity),
+      avg_cost: parseFloat(avgCost),
+      current_price: parseFloat(currentPrice),
+      currency,
+      notes: notes.trim() || null,
+    });
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="text-2xs text-muted uppercase tracking-wider block mb-1.5">Ticker</label>
+          <input value={pos.ticker} disabled className={`${inputClass} font-mono opacity-50 cursor-not-allowed`} />
+        </div>
+        <div>
+          <label className="text-2xs text-muted uppercase tracking-wider block mb-1.5">Company Name</label>
+          <input value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
+        </div>
+      </div>
+      <div className="grid grid-cols-3 gap-3">
+        <div>
+          <label className="text-2xs text-muted uppercase tracking-wider block mb-1.5">Quantity *</label>
+          <input type="number" step="any" min="0" value={quantity} onChange={(e) => setQuantity(e.target.value)} required className={`${inputClass} font-mono`} />
+        </div>
+        <div>
+          <label className="text-2xs text-muted uppercase tracking-wider block mb-1.5">Avg Cost *</label>
+          <input type="number" step="any" min="0" value={avgCost} onChange={(e) => setAvgCost(e.target.value)} required className={`${inputClass} font-mono`} />
+        </div>
+        <div>
+          <label className="text-2xs text-muted uppercase tracking-wider block mb-1.5">Current Price *</label>
+          <input type="number" step="any" min="0" value={currentPrice} onChange={(e) => setCurrentPrice(e.target.value)} required className={`${inputClass} font-mono`} />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="text-2xs text-muted uppercase tracking-wider block mb-1.5">Currency</label>
+          <select value={currency} onChange={(e) => setCurrency(e.target.value as typeof currency)} className={inputClass}>
+            {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="text-2xs text-muted uppercase tracking-wider block mb-1.5">Notes</label>
+          <input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional notes..." className={inputClass} />
+        </div>
+      </div>
+      <div className="flex justify-end gap-3 pt-2 border-t border-border">
+        <Button type="button" variant="ghost" size="sm" onClick={onCancel}>Cancel</Button>
+        <Button type="submit" variant="primary" size="sm" loading={saving}>Save changes</Button>
+      </div>
+    </form>
+  );
+}
+
 export default function PortfolioPage() {
   const { toast } = useToast();
   const [rawRows, setRawRows] = useState<PositionRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Position | null>(null);
+  const [editingPos, setEditingPos] = useState<Position | null>(null);
+  const [deletingPos, setDeletingPos] = useState<Position | null>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const tickers = rawRows.map((r) => r.ticker);
   const { prices: livePrices, loading: priceLoading, lastUpdated, error: priceError, refresh: refreshPrices } =
@@ -91,6 +179,39 @@ export default function PortfolioPage() {
   }, [toast]);
 
   useEffect(() => { loadRows(); }, [loadRows]);
+
+  async function handleEditSave(data: UpsertPosition) {
+    setSavingEdit(true);
+    try {
+      const saved = await positionRepository.upsert(data);
+      setRawRows((prev) => {
+        const idx = prev.findIndex((r) => r.id === saved.id);
+        if (idx >= 0) { const next = [...prev]; next[idx] = saved; return next; }
+        return prev;
+      });
+      setEditingPos(null);
+      toast(`${saved.ticker} updated`, "success");
+    } catch (err) {
+      toast((err as Error).message, "error");
+    } finally {
+      setSavingEdit(false);
+    }
+  }
+
+  async function handleDeleteConfirm() {
+    if (!deletingPos) return;
+    setDeletingId(deletingPos.id);
+    try {
+      await positionRepository.delete(deletingPos.id);
+      setRawRows((prev) => prev.filter((r) => r.id !== deletingPos.id));
+      setDeletingPos(null);
+      toast("Position removed", "success");
+    } catch (err) {
+      toast((err as Error).message, "error");
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   const usingRealData = rawRows.length > 0;
 
@@ -111,28 +232,10 @@ export default function PortfolioPage() {
   }, 0);
 
   const summaryStats = [
-    {
-      label: "Market Value",
-      value: formatCurrency(totalValue, "GBP"),
-      changePct: dailyPLPct,
-      changeLabel: "today",
-    },
-    {
-      label: "Unrealised P&L",
-      value: `${totalPL >= 0 ? "+" : ""}${formatCurrency(totalPL, "GBP", true)}`,
-      changePct: totalPLPct,
-      changeLabel: "total return",
-    },
-    {
-      label: "Day Change",
-      value: `${dailyPL >= 0 ? "+" : ""}${formatCurrency(dailyPL, "GBP")}`,
-      changePct: dailyPLPct,
-      changeLabel: "vs yesterday",
-    },
-    {
-      label: "Blended Yield",
-      value: `${totalDividendYield.toFixed(2)}%`,
-    },
+    { label: "Market Value", value: formatCurrency(totalValue, "GBP"), changePct: dailyPLPct, changeLabel: "today" },
+    { label: "Unrealised P&L", value: `${totalPL >= 0 ? "+" : ""}${formatCurrency(totalPL, "GBP", true)}`, changePct: totalPLPct, changeLabel: "total return" },
+    { label: "Day Change", value: `${dailyPL >= 0 ? "+" : ""}${formatCurrency(dailyPL, "GBP")}`, changePct: dailyPLPct, changeLabel: "vs yesterday" },
+    { label: "Blended Yield", value: `${totalDividendYield.toFixed(2)}%` },
   ];
 
   const sectorAlloc = usingRealData
@@ -168,7 +271,7 @@ export default function PortfolioPage() {
         {loading ? (
           <div className="flex items-center justify-center py-24 gap-3">
             <Loader2 className="w-5 h-5 text-muted animate-spin" />
-            <p className="text-sm text-muted">Loading portfolio...</p>
+            <p className="text-sm text-muted">Loading portfolio…</p>
           </div>
         ) : (
           <>
@@ -195,6 +298,8 @@ export default function PortfolioPage() {
                 <HoldingsTable
                   positions={usingRealData ? positions : mockPositions}
                   onSelect={setSelected}
+                  onEdit={usingRealData ? setEditingPos : undefined}
+                  onDelete={usingRealData ? setDeletingPos : undefined}
                   livePrices={usingRealData ? livePrices : {}}
                   isLive={usingRealData && lastUpdated !== null}
                 />
@@ -247,6 +352,7 @@ export default function PortfolioPage() {
         )}
       </div>
 
+      {/* Position detail drawer */}
       <AnimatePresence>
         {selected && (
           <>
@@ -377,6 +483,53 @@ export default function PortfolioPage() {
           </>
         )}
       </AnimatePresence>
+
+      {/* Edit modal */}
+      <Modal
+        open={!!editingPos}
+        onClose={() => setEditingPos(null)}
+        title={`Edit ${editingPos?.ticker ?? "Position"}`}
+        size="md"
+      >
+        {editingPos && (
+          <EditForm
+            pos={editingPos}
+            onSave={handleEditSave}
+            onCancel={() => setEditingPos(null)}
+            saving={savingEdit}
+          />
+        )}
+      </Modal>
+
+      {/* Delete confirmation modal */}
+      <Modal
+        open={!!deletingPos}
+        onClose={() => setDeletingPos(null)}
+        title="Delete Position"
+        size="sm"
+      >
+        {deletingPos && (
+          <div className="space-y-4">
+            <p className="text-sm text-secondary">
+              Are you sure you want to remove{" "}
+              <span className="font-mono font-semibold text-primary">{deletingPos.ticker}</span>{" "}
+              ({deletingPos.name}) from your portfolio? This cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3 pt-2 border-t border-border">
+              <Button variant="ghost" size="sm" onClick={() => setDeletingPos(null)}>Cancel</Button>
+              <Button
+                variant="primary"
+                size="sm"
+                loading={deletingId === deletingPos.id}
+                onClick={handleDeleteConfirm}
+                className="bg-loss hover:bg-loss/80 border-loss/40"
+              >
+                Delete position
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </AppShell>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { TrendingUp, TrendingDown, ChevronDown, ChevronUp, Search } from "lucide-react";
+import { TrendingUp, TrendingDown, ChevronDown, ChevronUp, Search, Pencil, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { formatCurrency, formatPct, formatNumber, cn } from "@/lib/utils";
 import type { Position } from "@/lib/types";
@@ -13,11 +13,13 @@ type SortKey = keyof Pick<Position, "name" | "marketValue" | "unrealisedPL" | "u
 interface HoldingsTableProps {
   positions: Position[];
   onSelect?: (pos: Position) => void;
+  onEdit?: (pos: Position) => void;
+  onDelete?: (pos: Position) => void;
   livePrices?: Record<string, PriceQuote>;
   isLive?: boolean;
 }
 
-export function HoldingsTable({ positions, onSelect, livePrices = {}, isLive = false }: HoldingsTableProps) {
+export function HoldingsTable({ positions, onSelect, onEdit, onDelete, livePrices = {}, isLive = false }: HoldingsTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>("marketValue");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [query, setQuery] = useState("");
@@ -94,6 +96,7 @@ export function HoldingsTable({ positions, onSelect, livePrices = {}, isLive = f
 
   return (
     <div className="space-y-3">
+      {/* Toolbar */}
       <div className="flex items-center gap-3">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted" />
@@ -117,6 +120,7 @@ export function HoldingsTable({ positions, onSelect, livePrices = {}, isLive = f
         </select>
       </div>
 
+      {/* Table */}
       <div className="bg-surface border border-border rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
@@ -137,6 +141,7 @@ export function HoldingsTable({ positions, onSelect, livePrices = {}, isLive = f
                     </span>
                   </th>
                 ))}
+                {/* Live price column header */}
                 <th className="px-4 py-3 text-right text-muted uppercase tracking-wider font-medium whitespace-nowrap">
                   {isLive ? (
                     <span className="inline-flex items-center gap-1.5">
@@ -146,6 +151,7 @@ export function HoldingsTable({ positions, onSelect, livePrices = {}, isLive = f
                   ) : "Price"}
                 </th>
                 <th className="px-4 py-3 text-right text-muted uppercase tracking-wider font-medium">Sector</th>
+                {(onEdit || onDelete) && <th className="px-4 py-3 w-16" />}
               </tr>
             </thead>
             <tbody>
@@ -163,8 +169,9 @@ export function HoldingsTable({ positions, onSelect, livePrices = {}, isLive = f
                     animate={{ opacity: 1 }}
                     transition={{ delay: i * 0.03 }}
                     onClick={() => onSelect?.(pos)}
-                    className="border-b border-border last:border-0 hover:bg-surface-2 cursor-pointer transition-colors"
+                    className="group border-b border-border last:border-0 hover:bg-surface-2 cursor-pointer transition-colors"
                   >
+                    {/* Name */}
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         {pos.logoUrl ? (
@@ -186,6 +193,7 @@ export function HoldingsTable({ positions, onSelect, livePrices = {}, isLive = f
                       </div>
                     </td>
 
+                    {/* Value */}
                     <td className="px-4 py-3 text-right">
                       <p className="font-mono font-medium text-primary">
                         {formatCurrency(pos.marketValue, "GBP", true)}
@@ -193,6 +201,7 @@ export function HoldingsTable({ positions, onSelect, livePrices = {}, isLive = f
                       <p className="text-muted text-2xs font-mono">{formatNumber(pos.quantity, 0)} units</p>
                     </td>
 
+                    {/* Weight */}
                     <td className="px-4 py-3 text-right">
                       <div className="flex flex-col items-end gap-1">
                         <span className="font-mono text-primary">{pos.weight.toFixed(1)}%</span>
@@ -202,16 +211,19 @@ export function HoldingsTable({ positions, onSelect, livePrices = {}, isLive = f
                       </div>
                     </td>
 
+                    {/* P&L */}
                     <td className="px-4 py-3 text-right">
                       <p className={`font-mono font-medium ${isUp ? "text-gain" : "text-loss"}`}>
                         {isUp ? "+" : ""}{formatCurrency(pos.unrealisedPL, "GBP", true)}
                       </p>
                     </td>
 
+                    {/* Return */}
                     <td className="px-4 py-3 text-right">
                       <Badge variant={isUp ? "gain" : "loss"}>{formatPct(pos.unrealisedPLPct)}</Badge>
                     </td>
 
+                    {/* Today */}
                     <td className="px-4 py-3 text-right">
                       {hasLive ? (
                         <div className={`inline-flex items-center gap-1 font-mono font-medium ${dayUp ? "text-gain" : "text-loss"}`}>
@@ -225,6 +237,7 @@ export function HoldingsTable({ positions, onSelect, livePrices = {}, isLive = f
                       )}
                     </td>
 
+                    {/* Live Price */}
                     <td className="px-4 py-3 text-right">
                       <div className="flex flex-col items-end gap-0.5">
                         <span className={`font-mono font-semibold ${hasLive ? "text-primary" : "text-muted"}`}>
@@ -242,9 +255,39 @@ export function HoldingsTable({ positions, onSelect, livePrices = {}, isLive = f
                       </div>
                     </td>
 
+                    {/* Sector */}
                     <td className="px-4 py-3 text-right">
                       <Badge variant="ghost">{pos.sector.split(" ")[0]}</Badge>
                     </td>
+
+                    {/* Edit / Delete */}
+                    {(onEdit || onDelete) && (
+                      <td className="px-4 py-3 text-right">
+                        <div
+                          className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {onEdit && (
+                            <button
+                              onClick={() => onEdit(pos)}
+                              className="p-1.5 rounded-lg text-muted hover:text-accent hover:bg-accent/10 transition-colors"
+                              title="Edit position"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          {onDelete && (
+                            <button
+                              onClick={() => onDelete(pos)}
+                              className="p-1.5 rounded-lg text-muted hover:text-loss hover:bg-loss/10 transition-colors"
+                              title="Delete position"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    )}
                   </motion.tr>
                 );
               })}

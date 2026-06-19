@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
@@ -6,49 +6,52 @@ import { TrendingUp, TrendingDown, ChevronDown, ChevronUp, Search } from "lucide
 import { Badge } from "@/components/ui/Badge";
 import { formatCurrency, formatPct, formatNumber, cn } from "@/lib/utils";
 import type { Position } from "@/lib/types";
+import type { PriceQuote } from "@/app/api/prices/route";
 
 type SortKey = keyof Pick<Position, "name" | "marketValue" | "unrealisedPL" | "unrealisedPLPct" | "dayChangePct" | "weight">;
 
 interface HoldingsTableProps {
   positions: Position[];
   onSelect?: (pos: Position) => void;
+  livePrices?: Record<string, PriceQuote>;
+  isLive?: boolean;
 }
 
-function Sparkline({ trend }: { trend: "up" | "down" }) {
-  const points = Array.from({ length: 12 }, (_, i) => {
-    const base = 40;
-    const drift = trend === "up" ? i * 1.5 : -i * 1.5;
-    return base + drift + (Math.random() * 8 - 4);
-  });
-  const min = Math.min(...points);
-  const max = Math.max(...points);
-  const range = max - min || 1;
-  const w = 56;
-  const h = 24;
-  const coords = points.map((p, i) => `${(i / (points.length - 1)) * w},${h - ((p - min) / range) * h}`).join(" ");
-
-  return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="shrink-0">
-      <polyline
-        points={coords}
-        fill="none"
-        stroke={trend === "up" ? "#10b981" : "#ef4444"}
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-export function HoldingsTable({ positions, onSelect }: HoldingsTableProps) {
+export function HoldingsTable({ positions, onSelect, livePrices = {}, isLive = false }: HoldingsTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>("marketValue");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [query, setQuery] = useState("");
   const [assetFilter, setAssetFilter] = useState<string>("all");
 
+  const enriched = useMemo(() =>
+    positions.map((pos) => {
+      const live = livePrices[pos.ticker];
+      if (!live) return pos;
+      const price = live.price;
+      const marketValue = pos.quantity * price;
+      const cost = pos.quantity * pos.avgCostBasis;
+      const unrealisedPL = marketValue - cost;
+      const unrealisedPLPct = cost > 0 ? (unrealisedPL / cost) * 100 : 0;
+      const totalValue = positions.reduce((s, p) => {
+        const lp = livePrices[p.ticker]?.price ?? p.currentPrice;
+        return s + p.quantity * lp;
+      }, 0);
+      return {
+        ...pos,
+        currentPrice: price,
+        marketValue,
+        unrealisedPL,
+        unrealisedPLPct,
+        weight: totalValue > 0 ? (marketValue / totalValue) * 100 : pos.weight,
+        dayChangePct: live.changePct,
+        dayChange: live.change,
+      };
+    }),
+    [positions, livePrices]
+  );
+
   const sorted = useMemo(() => {
-    let rows = positions.filter((p) => {
+    let rows = enriched.filter((p) => {
       const q = query.toLowerCase();
       return (
         (p.ticker.toLowerCase().includes(q) || p.name.toLowerCase().includes(q)) &&
@@ -66,24 +69,18 @@ export function HoldingsTable({ positions, onSelect }: HoldingsTableProps) {
         : String(aVal).localeCompare(String(bVal));
     });
     return rows;
-  }, [positions, sortKey, sortDir, query, assetFilter]);
+  }, [enriched, sortKey, sortDir, query, assetFilter]);
 
   function toggleSort(key: SortKey) {
-    if (sortKey === key) {
-      setSortDir((d) => (d === "desc" ? "asc" : "desc"));
-    } else {
-      setSortKey(key);
-      setSortDir("desc");
-    }
+    if (sortKey === key) setSortDir((d) => (d === "desc" ? "asc" : "desc"));
+    else { setSortKey(key); setSortDir("desc"); }
   }
 
   function SortIcon({ k }: { k: SortKey }) {
     if (sortKey !== k) return <ChevronDown className="w-3 h-3 text-muted opacity-30" />;
-    return sortDir === "desc" ? (
-      <ChevronDown className="w-3 h-3 text-accent" />
-    ) : (
-      <ChevronUp className="w-3 h-3 text-accent" />
-    );
+    return sortDir === "desc"
+      ? <ChevronDown className="w-3 h-3 text-accent" />
+      : <ChevronUp className="w-3 h-3 text-accent" />;
   }
 
   const cols: { key: SortKey; label: string; align?: "right" }[] = [
@@ -97,7 +94,6 @@ export function HoldingsTable({ positions, onSelect }: HoldingsTableProps) {
 
   return (
     <div className="space-y-3">
-      {/* Toolbar */}
       <div className="flex items-center gap-3">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted" />
@@ -121,7 +117,6 @@ export function HoldingsTable({ positions, onSelect }: HoldingsTableProps) {
         </select>
       </div>
 
-      {/* Table */}
       <div className="bg-surface border border-border rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
@@ -142,7 +137,14 @@ export function HoldingsTable({ positions, onSelect }: HoldingsTableProps) {
                     </span>
                   </th>
                 ))}
-                <th className="px-4 py-3 text-right text-muted uppercase tracking-wider font-medium">7d</th>
+                <th className="px-4 py-3 text-right text-muted uppercase tracking-wider font-medium whitespace-nowrap">
+                  {isLive ? (
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-gain animate-pulse inline-block" />
+                      Live Price
+                    </span>
+                  ) : "Price"}
+                </th>
                 <th className="px-4 py-3 text-right text-muted uppercase tracking-wider font-medium">Sector</th>
               </tr>
             </thead>
@@ -150,6 +152,10 @@ export function HoldingsTable({ positions, onSelect }: HoldingsTableProps) {
               {sorted.map((pos, i) => {
                 const isUp = pos.unrealisedPL >= 0;
                 const dayUp = pos.dayChangePct >= 0;
+                const live = livePrices[pos.ticker];
+                const displayPrice = live?.price ?? pos.currentPrice;
+                const hasLive = !!live;
+
                 return (
                   <motion.tr
                     key={pos.id}
@@ -157,9 +163,8 @@ export function HoldingsTable({ positions, onSelect }: HoldingsTableProps) {
                     animate={{ opacity: 1 }}
                     transition={{ delay: i * 0.03 }}
                     onClick={() => onSelect?.(pos)}
-                    className="border-b border-border last:border-0 hover:bg-surface-2 cursor-pointer transition-colors group"
+                    className="border-b border-border last:border-0 hover:bg-surface-2 cursor-pointer transition-colors"
                   >
-                    {/* Name */}
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         {pos.logoUrl ? (
@@ -167,9 +172,7 @@ export function HoldingsTable({ positions, onSelect }: HoldingsTableProps) {
                             src={pos.logoUrl}
                             alt={pos.name}
                             className="w-6 h-6 rounded-md object-contain bg-surface-3 shrink-0"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).style.display = "none";
-                            }}
+                            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
                           />
                         ) : (
                           <div className="w-6 h-6 rounded-md bg-surface-3 flex items-center justify-center shrink-0">
@@ -183,7 +186,6 @@ export function HoldingsTable({ positions, onSelect }: HoldingsTableProps) {
                       </div>
                     </td>
 
-                    {/* Value */}
                     <td className="px-4 py-3 text-right">
                       <p className="font-mono font-medium text-primary">
                         {formatCurrency(pos.marketValue, "GBP", true)}
@@ -191,48 +193,55 @@ export function HoldingsTable({ positions, onSelect }: HoldingsTableProps) {
                       <p className="text-muted text-2xs font-mono">{formatNumber(pos.quantity, 0)} units</p>
                     </td>
 
-                    {/* Weight */}
                     <td className="px-4 py-3 text-right">
                       <div className="flex flex-col items-end gap-1">
                         <span className="font-mono text-primary">{pos.weight.toFixed(1)}%</span>
                         <div className="w-12 h-1 bg-surface-3 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-accent rounded-full"
-                            style={{ width: `${Math.min(pos.weight * 4, 100)}%` }}
-                          />
+                          <div className="h-full bg-accent rounded-full" style={{ width: `${Math.min(pos.weight * 4, 100)}%` }} />
                         </div>
                       </div>
                     </td>
 
-                    {/* P&L */}
                     <td className="px-4 py-3 text-right">
                       <p className={`font-mono font-medium ${isUp ? "text-gain" : "text-loss"}`}>
                         {isUp ? "+" : ""}{formatCurrency(pos.unrealisedPL, "GBP", true)}
                       </p>
                     </td>
 
-                    {/* Return */}
                     <td className="px-4 py-3 text-right">
-                      <Badge variant={isUp ? "gain" : "loss"}>
-                        {formatPct(pos.unrealisedPLPct)}
-                      </Badge>
+                      <Badge variant={isUp ? "gain" : "loss"}>{formatPct(pos.unrealisedPLPct)}</Badge>
                     </td>
 
-                    {/* Today */}
                     <td className="px-4 py-3 text-right">
-                      <span className={`font-mono text-xs ${dayUp ? "text-gain" : "text-loss"}`}>
-                        {formatPct(pos.dayChangePct)}
-                      </span>
+                      {hasLive ? (
+                        <div className={`inline-flex items-center gap-1 font-mono font-medium ${dayUp ? "text-gain" : "text-loss"}`}>
+                          {dayUp ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                          {dayUp ? "+" : ""}{pos.dayChangePct.toFixed(2)}%
+                        </div>
+                      ) : (
+                        <span className={`font-mono text-xs ${dayUp ? "text-gain" : "text-loss"}`}>
+                          {formatPct(pos.dayChangePct)}
+                        </span>
+                      )}
                     </td>
 
-                    {/* Sparkline */}
                     <td className="px-4 py-3 text-right">
-                      <div className="flex justify-end">
-                        <Sparkline trend={pos.unrealisedPL >= 0 ? "up" : "down"} />
+                      <div className="flex flex-col items-end gap-0.5">
+                        <span className={`font-mono font-semibold ${hasLive ? "text-primary" : "text-muted"}`}>
+                          {displayPrice > 100
+                            ? formatCurrency(displayPrice, pos.currency)
+                            : displayPrice.toFixed(4)}
+                        </span>
+                        {hasLive ? (
+                          <span className={`text-2xs font-mono ${live.change >= 0 ? "text-gain" : "text-loss"}`}>
+                            {live.change >= 0 ? "+" : ""}{live.change.toFixed(2)}
+                          </span>
+                        ) : (
+                          <span className="text-2xs text-muted italic">stored</span>
+                        )}
                       </div>
                     </td>
 
-                    {/* Sector */}
                     <td className="px-4 py-3 text-right">
                       <Badge variant="ghost">{pos.sector.split(" ")[0]}</Badge>
                     </td>
@@ -245,7 +254,8 @@ export function HoldingsTable({ positions, onSelect }: HoldingsTableProps) {
       </div>
 
       <p className="text-2xs text-muted px-1">
-        {sorted.length} of {positions.length} holdings · Prices delayed 15 min
+        {sorted.length} of {positions.length} holdings ·{" "}
+        {isLive ? "Prices live via Yahoo Finance" : "Prices from last import"}
       </p>
     </div>
   );

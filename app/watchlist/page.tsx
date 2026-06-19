@@ -34,8 +34,8 @@ function AddTickerForm({ onSave, onCancel, saving }: AddTickerFormProps) {
       symbol: symbol.trim().toUpperCase(),
       name: name.trim() || symbol.trim().toUpperCase(),
       notes: notes.trim() || undefined,
-      target_price: targetPrice ? parseFloat(targetPrice) : null,
-      alert_price: alertPrice ? parseFloat(alertPrice) : null,
+      target_price: targetPrice ? parseFloat(targetPrice) : undefined,
+      alert_price: alertPrice ? parseFloat(alertPrice) : undefined,
     });
   }
 

@@ -1,5 +1,6 @@
-import type { Metadata, Viewport } from "next";
+﻿import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { ToastProvider } from "@/components/ui/Toast";
 
 export const metadata: Metadata = {
   title: "Portfolio OS",
@@ -26,7 +27,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
       <body className="bg-canvas text-primary antialiased">
-        {children}
+        <ToastProvider>{children}</ToastProvider>
       </body>
     </html>
   );

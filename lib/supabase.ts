@@ -35,3 +35,17 @@ export type WatchlistItemRow = {
   alert_price: number | null;
   added_at: string;
 };
+
+export type PositionRow = {
+  id: string;
+  user_id: string;
+  ticker: string;
+  name: string;
+  quantity: number;
+  avg_cost: number;
+  current_price: number;
+  currency: string;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+};

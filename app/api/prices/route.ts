@@ -32,7 +32,12 @@ export async function GET(req: NextRequest) {
   }
 
   if (!res.ok) {
-    return NextResponse.json({ error: `Twelve Data returned ${res.status}` }, { status: 502 });
+    const errText = await res.text().catch(() => "(unreadable)");
+    console.error("[prices] Twelve Data HTTP error", res.status, errText);
+    return NextResponse.json(
+      { error: `Twelve Data returned ${res.status}`, detail: errText },
+      { status: 502 }
+    );
   }
 
   let body: unknown;
@@ -42,10 +47,15 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "invalid JSON from Twelve Data" }, { status: 502 });
   }
 
+  console.log("[prices] Twelve Data raw response:", JSON.stringify(body).slice(0, 500));
+
   const prices: Record<string, PriceQuote> = {};
 
   function parseQuote(sym: string, q: Record<string, unknown>) {
-    if (q.status === "error" || !q.close) return;
+    if (q.status === "error" || !q.close) {
+      console.warn("[prices] skipping symbol", sym, "— status:", q.status, "close:", q.close, "message:", q.message);
+      return;
+    }
     const close = parseFloat(q.close as string);
     const prevClose = parseFloat(q.previous_close as string);
     const change = close - prevClose;
@@ -71,6 +81,8 @@ export async function GET(req: NextRequest) {
       if (q) parseQuote(sym, q);
     }
   }
+
+  console.log("[prices] resolved symbols:", Object.keys(prices));
 
   return NextResponse.json({ prices, ts: Date.now() }, {
     headers: { "Cache-Control": "no-store" },

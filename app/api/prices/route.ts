@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "edge";
 
@@ -51,6 +51,7 @@ export async function GET(req: NextRequest) {
 
   const prices: Record<string, PriceQuote> = {};
 
+  // Single symbol → object; multiple symbols → object keyed by symbol
   function parseQuote(sym: string, q: Record<string, unknown>) {
     if (q.status === "error" || !q.close) {
       console.warn("[prices] skipping symbol", sym, "— status:", q.status, "close:", q.close, "message:", q.message);

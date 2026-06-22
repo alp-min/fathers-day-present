@@ -1,4 +1,4 @@
-﻿// ─── Core Domain Types ────────────────────────────────────────────────────────
+// ─── Core Domain Types ────────────────────────────────────────────────────────
 
 export type AssetClass = "stock" | "etf" | "fund" | "cash" | "bond" | "crypto" | "commodity";
 export type Currency = "GBP" | "USD" | "EUR" | "AUD";

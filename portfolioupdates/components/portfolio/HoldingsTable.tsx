@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
@@ -235,7 +235,7 @@ export function HoldingsTable({ positions, onSelect, onEdit, onDelete, livePrice
                       </div>
                     </td>
 
-                    {/* P&L */}
+                    {/* P&L — merged £ and % */}
                     <td className="px-4 py-3 text-right">
                       <p className={`font-mono font-semibold ${isUp ? "text-gain" : "text-loss"}`}>
                         {isUp ? "+" : ""}{formatCurrency(pos.unrealisedPL, "GBP", true)}

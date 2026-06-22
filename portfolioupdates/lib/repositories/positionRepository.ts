@@ -1,4 +1,4 @@
-﻿import { supabase, type PositionRow } from "@/lib/supabase";
+import { supabase, type PositionRow } from "@/lib/supabase";
 
 const DEFAULT_USER = "default";
 

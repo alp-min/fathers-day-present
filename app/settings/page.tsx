@@ -6,7 +6,6 @@ import { User, Bell, Shield, Database, Palette, ChevronRight } from "lucide-reac
 import { AppShell } from "@/components/layout/AppShell";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { useTheme } from "@/components/ThemeProvider";
 
 const SECTIONS = [
   { id: "profile", icon: User, label: "Profile" },

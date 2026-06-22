@@ -80,9 +80,8 @@ const config: Config = {
         },
       },
       boxShadow: {
-        card: "0 1px 3px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.04)",
-        "card-hover":
-          "0 4px 16px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.06)",
+        card: "var(--shadow-card)",
+        "card-hover": "var(--shadow-card-hover)",
         glow: "0 0 24px rgba(99,102,241,0.2)",
         "glow-gain": "0 0 16px rgba(16,185,129,0.2)",
       },

@@ -6,6 +6,7 @@ import { User, Bell, Shield, Database, Palette, ChevronRight } from "lucide-reac
 import { AppShell } from "@/components/layout/AppShell";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { useTheme } from "@/components/ThemeProvider";
 
 const SECTIONS = [
   { id: "profile", icon: User, label: "Profile" },
@@ -32,8 +33,8 @@ function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) =>
 
 export default function SettingsPage() {
   const [active, setActive] = useState<Section>("profile");
+  const { theme, setTheme } = useTheme();
   const [prefs, setPrefs] = useState({
-    darkMode: true,
     compactMode: false,
     animations: true,
     emailDigest: true,
@@ -110,8 +111,14 @@ export default function SettingsPage() {
               <Card delay={0}>
                 <CardHeader><CardTitle>Appearance</CardTitle></CardHeader>
                 <CardContent className="pt-0 space-y-4">
+                  <div className="flex items-center justify-between py-2 border-b border-border">
+                    <div>
+                      <p className="text-sm font-medium text-primary">Dark mode</p>
+                      <p className="text-xs text-muted">Premium dark theme (recommended)</p>
+                    </div>
+                    <Toggle value={theme === "dark"} onChange={(v) => setTheme(v ? "dark" : "light")} />
+                  </div>
                   {[
-                    { key: "darkMode" as const, label: "Dark mode", desc: "Premium dark theme (recommended)" },
                     { key: "compactMode" as const, label: "Compact layout", desc: "Reduce spacing for more data density" },
                     { key: "animations" as const, label: "Animations", desc: "Smooth motion effects throughout the app" },
                   ].map(({ key, label, desc }) => (

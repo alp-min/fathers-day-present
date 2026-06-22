@@ -1,204 +1,270 @@
 "use client";
 
-import { useState } from "react";
-import { motion } from "framer-motion";
-import { User, Bell, Shield, Database, Palette, ChevronRight } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { AnimatePresence } from "framer-motion";
 import { AppShell } from "@/components/layout/AppShell";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
+import { LoadingScreen } from "@/components/LoadingScreen";
+import { PortfolioValueCard } from "@/components/dashboard/PortfolioValueCard";
+import { PerformanceChart } from "@/components/dashboard/PerformanceChart";
+import { AllocationChart } from "@/components/dashboard/AllocationChart";
+import { MarketSnapshot } from "@/components/dashboard/MarketSnapshot";
+import { TopMovers } from "@/components/dashboard/TopMovers";
+import { NewsFeed } from "@/components/dashboard/NewsFeed";
+import { RecentActivity } from "@/components/dashboard/RecentActivity";
+import { InsightCards } from "@/components/dashboard/InsightCards";
+import { WatchlistWidget } from "@/components/dashboard/WatchlistWidget";
+import { positionRepository } from "@/lib/repositories";
+import { useLivePrices } from "@/lib/hooks/useLivePrices";
+import {
+  mockPerformanceHistory,
+  mockMarketIndices,
+  mockNews,
+  mockTransactions,
+  mockInsights,
+  mockWatchlists,
+  mockPositions,
+  mockSectorAllocation,
+  mockGeographyAllocation,
+  mockAssetClassAllocation,
+} from "@/lib/mock-data";
+import type { Position, Currency, AllocationSlice, PortfolioSummary, TopMover } from "@/lib/types";
+import type { PositionRow } from "@/lib/supabase";
 
-const SECTIONS = [
-  { id: "profile", icon: User, label: "Profile" },
-  { id: "notifications", icon: Bell, label: "Notifications" },
-  { id: "appearance", icon: Palette, label: "Appearance" },
-  { id: "security", icon: Shield, label: "Security" },
-  { id: "data", icon: Database, label: "Data & Privacy" },
-] as const;
+// ─── Shared helpers (same as portfolio page) ──────────────────────────────────
 
-type Section = (typeof SECTIONS)[number]["id"];
-
-function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <button
-      onClick={() => onChange(!value)}
-      className={`relative w-9 h-5 rounded-full transition-colors ${value ? "bg-accent" : "bg-surface-3"}`}
-    >
-      <span
-        className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${value ? "translate-x-4" : ""}`}
-      />
-    </button>
-  );
+function inferCountry(ticker: string, stored: string): string {
+  if (stored && stored !== "United States") return stored;
+  const t = ticker.toUpperCase();
+  if (t.endsWith(".L")) return "United Kingdom";
+  if (t.endsWith(".AX")) return "Australia";
+  if (t.endsWith(".TO") || t.endsWith(".TSX")) return "Canada";
+  if (t.endsWith(".HK")) return "China";
+  if (t.endsWith(".PA") || t.endsWith(".DE") || t.endsWith(".MI") ||
+      t.endsWith(".AS") || t.endsWith(".MC") || t.endsWith(".SW") ||
+      t.endsWith(".ST") || t.endsWith(".OL") || t.endsWith(".BR")) return "Europe";
+  if (t.endsWith("=F")) return "Global";
+  if (t === "BTC" || t === "ETH" || t.endsWith("-USD")) return "Global";
+  return stored || "United States";
 }
 
-export default function SettingsPage() {
-  const [active, setActive] = useState<Section>("profile");
-  const [prefs, setPrefs] = useState({
-    darkMode: true,
-    compactMode: false,
-    animations: true,
-    emailDigest: true,
-    priceAlerts: true,
-    weeklyReport: false,
-    biometric: false,
-    twoFactor: false,
-  });
+const GEO_COLORS: Record<string, string> = {
+  "United States": "#3b82f6",
+  "United Kingdom": "#ef4444",
+  "Europe": "#8b5cf6",
+  "Australia": "#10b981",
+  "China": "#f59e0b",
+  "Canada": "#f97316",
+  "Japan": "#ec4899",
+  "Global": "#6b7280",
+  "Emerging Markets": "#06b6d4",
+};
 
-  function toggle(k: keyof typeof prefs) {
-    setPrefs((p) => ({ ...p, [k]: !p[k] }));
-  }
+function geoColor(country: string, i: number): string {
+  return GEO_COLORS[country] ?? `hsl(${(i * 67) % 360}, 55%, 55%)`;
+}
+
+function rowsToPositions(
+  rows: PositionRow[],
+  liveMap: Record<string, { price: number; changePct: number; change: number }>
+): Position[] {
+  const totalValue = rows.reduce((sum, r) => {
+    const price = liveMap[r.ticker]?.price ?? r.current_price;
+    return sum + r.quantity * price;
+  }, 0);
+
+  return rows.map((r) => {
+    const live = liveMap[r.ticker];
+    const price = live?.price ?? r.current_price;
+    const isShort = r.direction === "short";
+    const marketValue = r.quantity * price;
+    const cost = r.quantity * r.avg_cost;
+    const unrealisedPL = isShort ? cost - marketValue : marketValue - cost;
+    const unrealisedPLPct = cost > 0 ? (unrealisedPL / cost) * 100 : 0;
+    const dayChangePct = live?.changePct ?? 0;
+    const dayChange = live?.change ?? 0;
+    const weight = totalValue > 0 ? (marketValue / totalValue) * 100 : 0;
+
+    return {
+      id: r.id,
+      ticker: r.ticker,
+      name: r.name,
+      assetClass: (r.asset_class as Position["assetClass"]) ?? "stock",
+      sector: "Communication Services",
+      geography: inferCountry(r.ticker, r.country ?? "United States"),
+      exchange: "OTHER",
+      currency: r.currency as Currency,
+      quantity: r.quantity,
+      avgCostBasis: r.avg_cost,
+      currentPrice: price,
+      previousClose: price - dayChange,
+      marketValue,
+      unrealisedPL,
+      unrealisedPLPct,
+      dayChange,
+      dayChangePct,
+      weight,
+      direction: (r.direction ?? "long") as "long" | "short",
+      account: r.account ?? "General",
+      beta: r.beta ?? undefined,
+      addedDate: r.created_at,
+      notes: r.notes ?? undefined,
+    } satisfies Position;
+  });
+}
+
+function buildGeoAlloc(positions: Position[]): AllocationSlice[] {
+  const totalValue = positions.reduce((s, p) => s + p.marketValue, 0);
+  const map: Record<string, number> = {};
+  for (const p of positions) map[p.geography] = (map[p.geography] ?? 0) + p.marketValue;
+  return Object.entries(map)
+    .map(([name, val], i) => ({ name, value: parseFloat(((val / totalValue) * 100).toFixed(1)), color: geoColor(name, i) }))
+    .sort((a, b) => b.value - a.value);
+}
+
+function buildAssetAlloc(positions: Position[]): AllocationSlice[] {
+  const totalValue = positions.reduce((s, p) => s + p.marketValue, 0);
+  const map: Record<string, number> = {};
+  for (const p of positions) map[p.assetClass] = (map[p.assetClass] ?? 0) + p.marketValue;
+  const ASSET_COLORS: Record<string, string> = {
+    stock: "#3b82f6", etf: "#10b981", fund: "#8b5cf6",
+    cash: "#6b7280", bond: "#f59e0b", crypto: "#ec4899", commodity: "#f97316",
+  };
+  return Object.entries(map)
+    .map(([name, val]) => ({
+      name: name.charAt(0).toUpperCase() + name.slice(1),
+      value: parseFloat(((val / totalValue) * 100).toFixed(1)),
+      color: ASSET_COLORS[name] ?? "#6b7280",
+    }))
+    .sort((a, b) => b.value - a.value);
+}
+
+function buildTickerAlloc(positions: Position[]): AllocationSlice[] {
+  const totalValue = positions.reduce((s, p) => s + p.marketValue, 0);
+  return positions.map((p) => ({
+    name: p.ticker,
+    value: parseFloat(((p.marketValue / totalValue) * 100).toFixed(1)),
+    color: `hsl(${(p.ticker.charCodeAt(0) * 47) % 360}, 60%, 55%)`,
+  }));
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
+export default function DashboardPage() {
+  const [loaded, setLoaded] = useState(false);
+  const [rawRows, setRawRows] = useState<PositionRow[]>([]);
+
+  useEffect(() => {
+    positionRepository.list().then(setRawRows).catch(console.error);
+  }, []);
+
+  const tickers = useMemo(() => rawRows.map((r) => r.ticker), [rawRows]);
+  const { prices: livePrices } = useLivePrices(tickers);
+
+  const usingRealData = rawRows.length > 0;
+
+  const positions: Position[] = useMemo(
+    () => usingRealData ? rowsToPositions(rawRows, livePrices) : mockPositions,
+    [rawRows, livePrices, usingRealData]
+  );
+
+  const summary = useMemo((): PortfolioSummary => {
+    const longPositions = positions.filter((p) => (p.direction ?? "long") === "long");
+    const totalValue = positions.reduce((s, p) => s + p.marketValue, 0);
+    const totalCost = longPositions.reduce((s, p) => s + p.quantity * p.avgCostBasis, 0);
+    const totalUnrealisedPL = totalValue - totalCost;
+    const totalUnrealisedPLPct = totalCost > 0 ? (totalUnrealisedPL / totalCost) * 100 : 0;
+    const dailyPL = positions.reduce(
+      (s, p) => s + p.quantity * p.dayChange * ((p.direction ?? "long") === "short" ? -1 : 1), 0
+    );
+    const dailyPLPct = totalValue > 0 ? (dailyPL / (totalValue - dailyPL)) * 100 : 0;
+    const cashPositions = positions.filter((p) => p.assetClass === "cash");
+    const cashBalance = cashPositions.reduce((s, p) => s + p.marketValue, 0);
+    const cashPct = totalValue > 0 ? (cashBalance / totalValue) * 100 : 0;
+
+    return {
+      totalValue,
+      totalCost,
+      totalUnrealisedPL,
+      totalUnrealisedPLPct,
+      dailyPL,
+      dailyPLPct,
+      cashBalance,
+      cashPct,
+      positions,
+      currency: "GBP",
+      lastUpdated: new Date().toISOString(),
+    };
+  }, [positions]);
+
+  const topMovers = useMemo((): TopMover[] =>
+    [...positions]
+      .filter((p) => p.dayChangePct !== 0)
+      .sort((a, b) => Math.abs(b.dayChangePct) - Math.abs(a.dayChangePct))
+      .slice(0, 5)
+      .map((p) => ({
+        ticker: p.ticker,
+        name: p.name,
+        change: p.dayChange,
+        changePct: p.dayChangePct,
+        logoUrl: p.logoUrl,
+      })),
+    [positions]
+  );
+
+  const geoAlloc = usingRealData ? buildGeoAlloc(positions) : mockGeographyAllocation;
+  const assetAlloc = usingRealData ? buildAssetAlloc(positions) : mockAssetClassAllocation;
+  const sectorAlloc = usingRealData ? buildTickerAlloc(positions) : mockSectorAllocation;
+
+  const watchlistItems = mockWatchlists[0].items;
+  const nonCashCount = positions.filter((p) => p.assetClass !== "cash").length;
 
   return (
-    <AppShell title="Settings">
-      <div className="p-5 max-w-[900px] mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
-          {/* Nav */}
-          <nav className="space-y-1">
-            {SECTIONS.map(({ id, icon: Icon, label }) => (
-              <button
-                key={id}
-                onClick={() => setActive(id)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all ${
-                  active === id
-                    ? "bg-accent-glow text-accent border border-accent/20"
-                    : "text-muted hover:text-primary hover:bg-surface-2"
-                }`}
-              >
-                <Icon className="w-4 h-4 shrink-0" />
-                {label}
-                {active === id && <ChevronRight className="w-3 h-3 ml-auto" />}
-              </button>
-            ))}
-          </nav>
+    <>
+      <AnimatePresence>
+        {!loaded && <LoadingScreen onComplete={() => setLoaded(true)} />}
+      </AnimatePresence>
 
-          {/* Content */}
-          <div className="md:col-span-3 space-y-4">
-            {active === "profile" && (
-              <Card delay={0}>
-                <CardHeader><CardTitle>Profile</CardTitle></CardHeader>
-                <CardContent className="pt-0 space-y-4">
-                  <div className="flex items-center gap-4 pb-4 border-b border-border">
-                    <div className="w-14 h-14 rounded-2xl bg-accent/20 border border-accent/30 flex items-center justify-center text-xl">
-                      👨‍💼
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-primary">Dad</p>
-                      <p className="text-xs text-muted">Former Head of Equities · Macquarie</p>
-                      <p className="text-2xs text-muted mt-0.5 font-mono">personal@portfolio.os</p>
-                    </div>
-                  </div>
-                  {[
-                    { label: "Display Name", value: "Dad", type: "text" },
-                    { label: "Base Currency", value: "GBP", type: "select" },
-                    { label: "Home Exchange", value: "LSE", type: "select" },
-                  ].map((f) => (
-                    <div key={f.label} className="flex items-center justify-between py-1">
-                      <label className="text-sm text-secondary">{f.label}</label>
-                      <input
-                        defaultValue={f.value}
-                        className="bg-surface-2 border border-border rounded-lg px-3 py-1.5 text-sm text-primary font-mono focus:outline-none focus:ring-1 focus:ring-accent/40 w-40"
-                      />
-                    </div>
-                  ))}
-                  <div className="pt-2">
-                    <Button variant="primary" size="sm">Save changes</Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+      {loaded && (
+        <AppShell
+          title="Dashboard"
+          subtitle={`${nonCashCount} positions · ${usingRealData ? "live data" : "demo mode"}`}
+        >
+          <div className="p-5 space-y-5 max-w-[1600px] mx-auto">
+            {/* Row 1: Value + Market */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <PortfolioValueCard summary={summary} />
+              <MarketSnapshot indices={mockMarketIndices.slice(0, 4)} />
+            </div>
 
-            {active === "appearance" && (
-              <Card delay={0}>
-                <CardHeader><CardTitle>Appearance</CardTitle></CardHeader>
-                <CardContent className="pt-0 space-y-4">
-                  {[
-                    { key: "darkMode" as const, label: "Dark mode", desc: "Premium dark theme (recommended)" },
-                    { key: "compactMode" as const, label: "Compact layout", desc: "Reduce spacing for more data density" },
-                    { key: "animations" as const, label: "Animations", desc: "Smooth motion effects throughout the app" },
-                  ].map(({ key, label, desc }) => (
-                    <div key={key} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-                      <div>
-                        <p className="text-sm font-medium text-primary">{label}</p>
-                        <p className="text-xs text-muted">{desc}</p>
-                      </div>
-                      <Toggle value={prefs[key]} onChange={() => toggle(key)} />
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            )}
+            {/* Row 2: Performance chart */}
+            <div className="grid grid-cols-1 gap-4">
+              <PerformanceChart data={mockPerformanceHistory} />
+            </div>
 
-            {active === "notifications" && (
-              <Card delay={0}>
-                <CardHeader><CardTitle>Notifications</CardTitle></CardHeader>
-                <CardContent className="pt-0 space-y-4">
-                  {[
-                    { key: "emailDigest" as const, label: "Daily digest", desc: "Morning summary of portfolio performance" },
-                    { key: "priceAlerts" as const, label: "Price alerts", desc: "Notify when watchlist targets are hit" },
-                    { key: "weeklyReport" as const, label: "Weekly report", desc: "Performance summary every Sunday" },
-                  ].map(({ key, label, desc }) => (
-                    <div key={key} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-                      <div>
-                        <p className="text-sm font-medium text-primary">{label}</p>
-                        <p className="text-xs text-muted">{desc}</p>
-                      </div>
-                      <Toggle value={prefs[key]} onChange={() => toggle(key)} />
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            )}
+            {/* Row 3: Allocation + Top Movers + Watchlist */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <AllocationChart
+                sector={sectorAlloc}
+                geography={geoAlloc}
+                assetClass={assetAlloc}
+              />
+              <TopMovers movers={usingRealData ? topMovers : []} />
+              <div className="lg:col-span-2">
+                <WatchlistWidget items={watchlistItems} />
+              </div>
+            </div>
 
-            {active === "security" && (
-              <Card delay={0}>
-                <CardHeader><CardTitle>Security</CardTitle></CardHeader>
-                <CardContent className="pt-0 space-y-4">
-                  {[
-                    { key: "biometric" as const, label: "Biometric unlock", desc: "Use Face ID / fingerprint on supported devices" },
-                    { key: "twoFactor" as const, label: "Two-factor authentication", desc: "Add an extra layer of security to your account" },
-                  ].map(({ key, label, desc }) => (
-                    <div key={key} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-                      <div>
-                        <p className="text-sm font-medium text-primary">{label}</p>
-                        <p className="text-xs text-muted">{desc}</p>
-                      </div>
-                      <Toggle value={prefs[key]} onChange={() => toggle(key)} />
-                    </div>
-                  ))}
+            {/* Row 4: News + Recent Activity */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <NewsFeed news={mockNews} />
+              <RecentActivity transactions={mockTransactions} />
+            </div>
 
-                  {/* Hidden easter egg */}
-                  <div className="mt-6 p-4 bg-surface-2 rounded-xl border border-border">
-                    <p className="text-2xs text-muted font-mono">
-                      // Portfolio OS v0.1.0 · Built with ♥
-                    </p>
-                    <p className="text-2xs text-muted font-mono mt-1">
-                      // Former Head of Equities. Still beating the market.
-                    </p>
-                    <p className="text-2xs text-muted/40 font-mono mt-1">
-                      // Macquarie years → Today
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {active === "data" && (
-              <Card delay={0}>
-                <CardHeader><CardTitle>Data & Privacy</CardTitle></CardHeader>
-                <CardContent className="pt-0 space-y-4">
-                  <p className="text-xs text-muted leading-relaxed">
-                    All data is stored locally and in your private Supabase instance. No data is shared with third parties.
-                    Market data is fetched from public APIs with a 15-minute delay.
-                  </p>
-                  <div className="flex gap-3">
-                    <Button variant="secondary" size="sm">Export all data</Button>
-                    <Button variant="danger" size="sm">Delete account</Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            {/* Row 5: Insights */}
+            <InsightCards insights={mockInsights} />
           </div>
-        </div>
-      </div>
-    </AppShell>
+        </AppShell>
+      )}
+    </>
   );
 }

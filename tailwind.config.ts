@@ -1,7 +1,6 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
-  darkMode: "class",
   content: [
     "./pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -11,28 +10,31 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // All colors resolve from CSS custom properties so light/dark themes work
-        canvas:         "var(--color-canvas)",
-        surface:        "var(--color-surface)",
-        "surface-2":    "var(--color-surface-2)",
-        "surface-3":    "var(--color-surface-3)",
-        border:         "var(--color-border)",
-        "border-subtle":"var(--color-border-sub)",
+        // Core background layers
+        canvas: "#080810",
+        surface: "#0f0f1a",
+        "surface-2": "#141422",
+        "surface-3": "#1a1a2e",
+        border: "#1e1e32",
+        "border-subtle": "#16162a",
 
-        primary:        "var(--color-primary)",
-        secondary:      "var(--color-secondary)",
-        muted:          "var(--color-muted)",
+        // Text
+        primary: "#f0f0fa",
+        secondary: "#8888aa",
+        muted: "#44445a",
 
-        accent:         "var(--color-accent)",
-        "accent-dim":   "var(--color-accent-dim)",
-        "accent-glow":  "var(--color-accent-glow)",
+        // Accent
+        accent: "#6366f1",
+        "accent-dim": "#4f46e5",
+        "accent-glow": "rgba(99,102,241,0.15)",
 
-        gain:           "var(--color-gain)",
-        "gain-dim":     "var(--color-gain-dim)",
-        loss:           "var(--color-loss)",
-        "loss-dim":     "var(--color-loss-dim)",
-        warn:           "var(--color-warn)",
-        "warn-dim":     "var(--color-warn-dim)",
+        // Semantic
+        gain: "#10b981",
+        "gain-dim": "rgba(16,185,129,0.15)",
+        loss: "#ef4444",
+        "loss-dim": "rgba(239,68,68,0.15)",
+        warn: "#f59e0b",
+        "warn-dim": "rgba(245,158,11,0.15)",
 
         // Chart palette
         chart1: "#6366f1",
@@ -80,8 +82,9 @@ const config: Config = {
         },
       },
       boxShadow: {
-        card: "var(--shadow-card)",
-        "card-hover": "var(--shadow-card-hover)",
+        card: "0 1px 3px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.04)",
+        "card-hover":
+          "0 4px 16px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.06)",
         glow: "0 0 24px rgba(99,102,241,0.2)",
         "glow-gain": "0 0 16px rgba(16,185,129,0.2)",
       },

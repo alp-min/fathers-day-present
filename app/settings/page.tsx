@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { User, Bell, Shield, Database, Palette, ChevronRight } from "lucide-react";
+import { User, Bell, Shield, Database, Palette, ChevronRight, Loader2, CheckCircle } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { useAuth } from "@/components/AuthProvider";
+import { supabase } from "@/lib/supabase";
 
 const SECTIONS = [
   { id: "profile", icon: User, label: "Profile" },
@@ -23,15 +25,24 @@ function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) =>
       onClick={() => onChange(!value)}
       className={`relative w-9 h-5 rounded-full transition-colors ${value ? "bg-accent" : "bg-surface-3"}`}
     >
-      <span
-        className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${value ? "translate-x-4" : ""}`}
-      />
+      <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${value ? "translate-x-4" : ""}`} />
     </button>
   );
 }
 
+const inputClass = "bg-surface-2 border border-border rounded-lg px-3 py-1.5 text-sm text-primary font-mono focus:outline-none focus:ring-1 focus:ring-accent/40 w-52";
+
 export default function SettingsPage() {
+  const { user } = useAuth();
   const [active, setActive] = useState<Section>("profile");
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  // Profile fields — initialised from Supabase user metadata
+  const [displayName, setDisplayName] = useState("");
+  const [jobTitle, setJobTitle] = useState("");
+  const [baseCurrency, setBaseCurrency] = useState("GBP");
+
   const [prefs, setPrefs] = useState({
     darkMode: true,
     compactMode: false,
@@ -42,6 +53,28 @@ export default function SettingsPage() {
     biometric: false,
     twoFactor: false,
   });
+
+  // Load saved metadata on mount
+  useEffect(() => {
+    if (!user) return;
+    const meta = user.user_metadata ?? {};
+    setDisplayName(meta.display_name ?? "");
+    setJobTitle(meta.job_title ?? "");
+    setBaseCurrency(meta.base_currency ?? "GBP");
+  }, [user]);
+
+  async function saveProfile() {
+    setSaving(true);
+    setSaved(false);
+    const { error } = await supabase.auth.updateUser({
+      data: { display_name: displayName, job_title: jobTitle, base_currency: baseCurrency },
+    });
+    setSaving(false);
+    if (!error) {
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    }
+  }
 
   function toggle(k: keyof typeof prefs) {
     setPrefs((p) => ({ ...p, [k]: !p[k] }));
@@ -76,31 +109,66 @@ export default function SettingsPage() {
               <Card delay={0}>
                 <CardHeader><CardTitle>Profile</CardTitle></CardHeader>
                 <CardContent className="pt-0 space-y-4">
+                  {/* Avatar + email */}
                   <div className="flex items-center gap-4 pb-4 border-b border-border">
-                    <div className="w-14 h-14 rounded-2xl bg-accent/20 border border-accent/30 flex items-center justify-center text-xl">
-                      👨‍💼
+                    <div className="w-12 h-12 rounded-2xl bg-accent/20 border border-accent/30 flex items-center justify-center text-lg">
+                      {displayName ? displayName.charAt(0).toUpperCase() : "?"}
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-primary">Dad</p>
-                      <p className="text-xs text-muted">Former Head of Equities · Macquarie</p>
-                      <p className="text-2xs text-muted mt-0.5 font-mono">personal@portfolio.os</p>
+                      <p className="text-sm font-semibold text-primary">{displayName || "—"}</p>
+                      <p className="text-xs text-muted font-mono">{user?.email}</p>
                     </div>
                   </div>
-                  {[
-                    { label: "Display Name", value: "Dad", type: "text" },
-                    { label: "Base Currency", value: "GBP", type: "select" },
-                    { label: "Home Exchange", value: "LSE", type: "select" },
-                  ].map((f) => (
-                    <div key={f.label} className="flex items-center justify-between py-1">
-                      <label className="text-sm text-secondary">{f.label}</label>
+
+                  {/* Editable fields */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between py-1">
+                      <label className="text-sm text-secondary">Display Name</label>
                       <input
-                        defaultValue={f.value}
-                        className="bg-surface-2 border border-border rounded-lg px-3 py-1.5 text-sm text-primary font-mono focus:outline-none focus:ring-1 focus:ring-accent/40 w-40"
+                        value={displayName}
+                        onChange={(e) => setDisplayName(e.target.value)}
+                        placeholder="Your name"
+                        className={inputClass}
                       />
                     </div>
-                  ))}
-                  <div className="pt-2">
-                    <Button variant="primary" size="sm">Save changes</Button>
+                    <div className="flex items-center justify-between py-1">
+                      <label className="text-sm text-secondary">Job Title</label>
+                      <input
+                        value={jobTitle}
+                        onChange={(e) => setJobTitle(e.target.value)}
+                        placeholder="e.g. Head of Equities"
+                        className={inputClass}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between py-1">
+                      <label className="text-sm text-secondary">Base Currency</label>
+                      <select
+                        value={baseCurrency}
+                        onChange={(e) => setBaseCurrency(e.target.value)}
+                        className={inputClass}
+                      >
+                        {["GBP", "USD", "EUR", "AUD"].map((c) => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 flex items-center gap-3">
+                    <Button variant="primary" size="sm" onClick={saveProfile} disabled={saving}>
+                      {saving && <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />}
+                      Save changes
+                    </Button>
+                    {saved && (
+                      <motion.span
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="flex items-center gap-1.5 text-xs text-gain"
+                      >
+                        <CheckCircle className="w-3.5 h-3.5" /> Saved
+                      </motion.span>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -152,29 +220,15 @@ export default function SettingsPage() {
               <Card delay={0}>
                 <CardHeader><CardTitle>Security</CardTitle></CardHeader>
                 <CardContent className="pt-0 space-y-4">
-                  {[
-                    { key: "biometric" as const, label: "Biometric unlock", desc: "Use Face ID / fingerprint on supported devices" },
-                    { key: "twoFactor" as const, label: "Two-factor authentication", desc: "Add an extra layer of security to your account" },
-                  ].map(({ key, label, desc }) => (
-                    <div key={key} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-                      <div>
-                        <p className="text-sm font-medium text-primary">{label}</p>
-                        <p className="text-xs text-muted">{desc}</p>
-                      </div>
-                      <Toggle value={prefs[key]} onChange={() => toggle(key)} />
+                  <div className="flex items-center justify-between py-1">
+                    <div>
+                      <p className="text-sm font-medium text-primary">Email</p>
+                      <p className="text-xs text-muted font-mono">{user?.email}</p>
                     </div>
-                  ))}
-
-                  {/* Hidden easter egg */}
-                  <div className="mt-6 p-4 bg-surface-2 rounded-xl border border-border">
-                    <p className="text-2xs text-muted font-mono">
-                      // Portfolio OS v0.1.0 · Built with ♥
-                    </p>
-                    <p className="text-2xs text-muted font-mono mt-1">
-                      // Former Head of Equities. Still beating the market.
-                    </p>
-                    <p className="text-2xs text-muted/40 font-mono mt-1">
-                      // Macquarie years → Today
+                  </div>
+                  <div className="border-t border-border pt-4">
+                    <p className="text-xs text-muted leading-relaxed">
+                      To change your password, sign out and use the "Forgot password" link on the login page.
                     </p>
                   </div>
                 </CardContent>
@@ -186,8 +240,8 @@ export default function SettingsPage() {
                 <CardHeader><CardTitle>Data & Privacy</CardTitle></CardHeader>
                 <CardContent className="pt-0 space-y-4">
                   <p className="text-xs text-muted leading-relaxed">
-                    All data is stored locally and in your private Supabase instance. No data is shared with third parties.
-                    Market data is fetched from public APIs with a 15-minute delay.
+                    All data is stored in your private Supabase instance. No data is shared with third parties.
+                    Market data is fetched from Twelve Data API.
                   </p>
                   <div className="flex gap-3">
                     <Button variant="secondary" size="sm">Export all data</Button>

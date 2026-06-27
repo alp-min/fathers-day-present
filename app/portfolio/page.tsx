@@ -15,12 +15,6 @@ import { PriceStatusBar } from "@/components/ui/PriceStatusBar";
 import { formatCurrency, formatPct, formatDate } from "@/lib/utils";
 import { positionRepository, type UpsertPosition } from "@/lib/repositories";
 import { useLivePrices } from "@/lib/hooks/useLivePrices";
-import {
-  mockPositions,
-  mockSectorAllocation,
-  mockGeographyAllocation,
-  mockAssetClassAllocation,
-} from "@/lib/mock-data";
 import type { Position, Currency, AllocationSlice, AssetClass } from "@/lib/types";
 import type { PositionRow } from "@/lib/supabase";
 import { useToast } from "@/components/ui/Toast";
@@ -444,7 +438,7 @@ export default function PortfolioPage() {
 
   const allPositions: Position[] = usingRealData
     ? rowsToPositions(rawRows, livePrices)
-    : mockPositions;
+    : [];
 
   // Unique accounts for filter dropdown
   const accounts = useMemo(() => {
@@ -477,16 +471,16 @@ export default function PortfolioPage() {
   ];
 
   // Allocation slices
-  const geoAlloc = usingRealData ? buildGeoAlloc(positions) : mockGeographyAllocation;
-  const assetAlloc = usingRealData ? buildAssetAlloc(positions) : mockAssetClassAllocation;
-  const sectorAlloc = usingRealData ? buildTickerAlloc(positions) : mockSectorAllocation;
+  const geoAlloc = buildGeoAlloc(positions);
+  const assetAlloc = buildAssetAlloc(positions);
+  const sectorAlloc = buildTickerAlloc(positions);
 
   const hasShorts = positions.some((p) => p.direction === "short");
 
   return (
     <AppShell
       title="Portfolio"
-      subtitle={`${positions.filter(p => p.assetClass !== "cash").length} positions · ${usingRealData ? "live data" : "sample data"}`}
+      subtitle={usingRealData ? `${positions.filter(p => p.assetClass !== "cash").length} positions · live data` : "No positions yet"}
     >
       <div className="p-5 max-w-[1600px] mx-auto space-y-5">
 
@@ -494,14 +488,16 @@ export default function PortfolioPage() {
           <motion.div
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-3 p-3 bg-surface-2 border border-warn/30 rounded-xl"
+            className="flex flex-col items-center justify-center py-24 text-center"
           >
-            <AlertCircle className="w-4 h-4 text-warn shrink-0" />
-            <p className="text-xs text-muted flex-1">
-              Showing <span className="text-warn font-medium">sample data</span> — go to{" "}
-              <a href="/import" className="text-accent underline underline-offset-2">Import Data</a>{" "}
-              to add your real portfolio positions.
-            </p>
+            <div className="w-14 h-14 rounded-2xl bg-surface-2 border border-border flex items-center justify-center mb-4">
+              <StickyNote className="w-6 h-6 text-muted" />
+            </div>
+            <p className="text-sm font-semibold text-primary mb-1">No positions yet</p>
+            <p className="text-xs text-muted mb-4">Import a CSV or add positions manually to get started.</p>
+            <a href="/import" className="px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-dim transition-colors">
+              Import positions
+            </a>
           </motion.div>
         )}
 
@@ -563,11 +559,11 @@ export default function PortfolioPage() {
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
               <div className="lg:col-span-3">
                 <HoldingsTable
-                  positions={usingRealData ? positions : mockPositions}
+                  positions={positions}
                   onSelect={setSelected}
                   onEdit={usingRealData ? setEditingPos : undefined}
                   onDelete={usingRealData ? setDeletingPos : undefined}
-                  livePrices={usingRealData ? livePrices : {}}
+                  livePrices={livePrices}
                   isLive={usingRealData && lastUpdated !== null}
                 />
               </div>
@@ -582,41 +578,31 @@ export default function PortfolioPage() {
 
                 <Card delay={0.3}>
                   <CardHeader>
-                    <CardTitle>{usingRealData ? "Top Positions" : "Top Dividends"}</CardTitle>
+                    <CardTitle>Top Positions</CardTitle>
                   </CardHeader>
                   <CardContent className="pt-0 space-y-2">
-                    {usingRealData
-                      ? [...positions]
-                          .sort((a, b) => b.marketValue - a.marketValue)
-                          .slice(0, 5)
-                          .map((p) => (
-                            <div key={p.id} className="flex items-center justify-between py-1.5">
-                              <div>
-                                <div className="flex items-center gap-1.5">
-                                  <p className="text-xs font-mono font-medium text-primary">{p.ticker}</p>
-                                  {p.direction === "short" && (
-                                    <span className="text-2xs font-mono text-loss bg-loss/10 px-1 rounded">SHORT</span>
-                                  )}
-                                </div>
-                                <p className="text-2xs text-muted">{p.account ?? "General"}</p>
-                              </div>
-                              <Badge variant={p.unrealisedPL >= 0 ? "gain" : "loss"}>
-                                {p.unrealisedPL >= 0 ? "+" : ""}{p.unrealisedPLPct.toFixed(1)}%
-                              </Badge>
+                    {[...positions]
+                      .sort((a, b) => b.marketValue - a.marketValue)
+                      .slice(0, 5)
+                      .map((p) => (
+                        <div key={p.id} className="flex items-center justify-between py-1.5">
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <p className="text-xs font-mono font-medium text-primary">{p.ticker}</p>
+                              {p.direction === "short" && (
+                                <span className="text-2xs font-mono text-loss bg-loss/10 px-1 rounded">SHORT</span>
+                              )}
                             </div>
-                          ))
-                      : mockPositions
-                          .filter((p) => p.dividendYield && p.dividendYield > 1)
-                          .sort((a, b) => (b.dividendYield ?? 0) - (a.dividendYield ?? 0))
-                          .map((p) => (
-                            <div key={p.id} className="flex items-center justify-between py-1.5">
-                              <div>
-                                <p className="text-xs font-mono font-medium text-primary">{p.ticker}</p>
-                                <p className="text-2xs text-muted">{p.name.split(" ").slice(0, 2).join(" ")}</p>
-                              </div>
-                              <Badge variant="gain">{p.dividendYield?.toFixed(1)}% yield</Badge>
-                            </div>
-                          ))}
+                            <p className="text-2xs text-muted">{p.account ?? "General"}</p>
+                          </div>
+                          <Badge variant={p.unrealisedPL >= 0 ? "gain" : "loss"}>
+                            {p.unrealisedPL >= 0 ? "+" : ""}{p.unrealisedPLPct.toFixed(1)}%
+                          </Badge>
+                        </div>
+                      ))}
+                    {positions.length === 0 && (
+                      <p className="text-xs text-muted py-2">No positions yet.</p>
+                    )}
                   </CardContent>
                 </Card>
               </div>

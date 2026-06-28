@@ -1,4 +1,4 @@
-﻿import type { Config } from "tailwindcss";
+import type { Config } from "tailwindcss";
 
 const config: Config = {
   content: [
@@ -20,8 +20,8 @@ const config: Config = {
 
         // Text
         primary: "#111118",
-        secondary: "#555566",
-        muted: "#999aaa",
+        secondary: "#444455",
+        muted: "#666677",
 
         // Accent
         accent: "#6366f1",

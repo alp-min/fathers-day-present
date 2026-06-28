@@ -1,4 +1,4 @@
-﻿@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -22,18 +22,11 @@ html {
   text-rendering: optimizeLegibility;
 }
 
-/* Light mode base */
 body {
   background-color: #f5f5f7;
   color: #111118;
   font-family: var(--font-inter);
   overflow-x: hidden;
-}
-
-/* Dark mode override */
-.dark body {
-  background-color: #080810;
-  color: #f0f0fa;
 }
 
 /* Scrollbar */
@@ -51,20 +44,11 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #aaaacc;
 }
-.dark ::-webkit-scrollbar-thumb {
-  background: #1e1e32;
-}
-.dark ::-webkit-scrollbar-thumb:hover {
-  background: #2e2e48;
-}
 
 /* Selection */
 ::selection {
   background: rgba(99, 102, 241, 0.25);
   color: #111118;
-}
-.dark ::selection {
-  color: #f0f0fa;
 }
 
 /* Custom utilities */
@@ -89,10 +73,6 @@ body {
     border: 1px solid #e5e5ea;
     border-radius: 0.75rem;
   }
-  .dark .card {
-    background-color: #0f0f1a;
-    border-color: #1e1e32;
-  }
 
   .card-hover {
     transition: border-color 0.2s, box-shadow 0.2s;
@@ -100,10 +80,6 @@ body {
   .card-hover:hover {
     border-color: #d1d1d6;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  }
-  .dark .card-hover:hover {
-    border-color: #2e2e48;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
   }
 
   .num { font-family: var(--font-mono); }
@@ -118,15 +94,6 @@ body {
     background-size: 200% 100%;
     animation: shimmer 1.5s linear infinite;
   }
-  .dark .shimmer-bg {
-    background: linear-gradient(
-      90deg,
-      #0f0f1a 0%,
-      #1a1a2e 50%,
-      #0f0f1a 100%
-    );
-    background-size: 200% 100%;
-  }
 }
 
 /* Recharts overrides */
@@ -140,10 +107,6 @@ body {
   border-radius: 8px !important;
   padding: 8px 12px !important;
 }
-.dark .recharts-default-tooltip {
-  background-color: #141422 !important;
-  border-color: #1e1e32 !important;
-}
 
 .recharts-tooltip-label {
   color: #888899 !important;
@@ -155,9 +118,6 @@ body {
   color: #111118 !important;
   font-family: "JetBrains Mono", monospace !important;
   font-size: 12px !important;
-}
-.dark .recharts-tooltip-item {
-  color: #f0f0fa !important;
 }
 
 /* Number animation */

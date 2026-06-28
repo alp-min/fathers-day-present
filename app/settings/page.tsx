@@ -44,27 +44,12 @@ export default function SettingsPage() {
   const [baseCurrency, setBaseCurrency] = useState("GBP");
 
   const [prefs, setPrefs] = useState({
-    darkMode: true,
     compactMode: false,
     animations: true,
     emailDigest: true,
     priceAlerts: true,
     weeklyReport: false,
-    biometric: false,
-    twoFactor: false,
   });
-
-  // Load dark mode preference from localStorage on mount
-  useEffect(() => {
-    const stored = localStorage.getItem("theme");
-    const isDark = stored ? stored === "dark" : document.documentElement.classList.contains("dark");
-    setPrefs((p) => ({ ...p, darkMode: isDark }));
-    if (isDark) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-  }, []);
 
   // Load saved metadata on mount
   useEffect(() => {
@@ -89,19 +74,7 @@ export default function SettingsPage() {
   }
 
   function toggle(k: keyof typeof prefs) {
-    setPrefs((p) => {
-      const next = { ...p, [k]: !p[k] };
-      if (k === "darkMode") {
-        if (next.darkMode) {
-          document.documentElement.classList.add("dark");
-          localStorage.setItem("theme", "dark");
-        } else {
-          document.documentElement.classList.remove("dark");
-          localStorage.setItem("theme", "light");
-        }
-      }
-      return next;
-    });
+    setPrefs((p) => ({ ...p, [k]: !p[k] }));
   }
 
   return (
@@ -203,7 +176,6 @@ export default function SettingsPage() {
                 <CardHeader><CardTitle>Appearance</CardTitle></CardHeader>
                 <CardContent className="pt-0 space-y-4">
                   {[
-                    { key: "darkMode" as const, label: "Dark mode", desc: "Premium dark theme (recommended)" },
                     { key: "compactMode" as const, label: "Compact layout", desc: "Reduce spacing for more data density" },
                     { key: "animations" as const, label: "Animations", desc: "Smooth motion effects throughout the app" },
                   ].map(({ key, label, desc }) => (

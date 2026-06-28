@@ -54,6 +54,18 @@ export default function SettingsPage() {
     twoFactor: false,
   });
 
+  // Load dark mode preference from localStorage on mount
+  useEffect(() => {
+    const stored = localStorage.getItem("theme");
+    const isDark = stored ? stored === "dark" : document.documentElement.classList.contains("dark");
+    setPrefs((p) => ({ ...p, darkMode: isDark }));
+    if (isDark) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, []);
+
   // Load saved metadata on mount
   useEffect(() => {
     if (!user) return;
@@ -77,7 +89,19 @@ export default function SettingsPage() {
   }
 
   function toggle(k: keyof typeof prefs) {
-    setPrefs((p) => ({ ...p, [k]: !p[k] }));
+    setPrefs((p) => {
+      const next = { ...p, [k]: !p[k] };
+      if (k === "darkMode") {
+        if (next.darkMode) {
+          document.documentElement.classList.add("dark");
+          localStorage.setItem("theme", "dark");
+        } else {
+          document.documentElement.classList.remove("dark");
+          localStorage.setItem("theme", "light");
+        }
+      }
+      return next;
+    });
   }
 
   return (

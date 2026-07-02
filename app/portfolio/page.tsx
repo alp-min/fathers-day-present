@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, StickyNote, AlertCircle, Loader2, TrendingUp, TrendingDown } from "lucide-react";
+import { X, StickyNote, AlertCircle, Loader2, TrendingUp, TrendingDown, Activity } from "lucide-react";
+import type { MomentumStats } from "@/app/api/momentum/route";
 import { AppShell } from "@/components/layout/AppShell";
 import { HoldingsTable } from "@/components/portfolio/HoldingsTable";
 import { AllocationChart } from "@/components/dashboard/AllocationChart";
@@ -378,6 +379,8 @@ export default function PortfolioPage() {
   const [rawRows, setRawRows] = useState<PositionRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Position | null>(null);
+  const [momentum, setMomentum] = useState<MomentumStats | null>(null);
+  const [momentumLoading, setMomentumLoading] = useState(false);
   const [editingPos, setEditingPos] = useState<Position | null>(null);
   const [deletingPos, setDeletingPos] = useState<Position | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
@@ -400,6 +403,17 @@ export default function PortfolioPage() {
   }, [toast]);
 
   useEffect(() => { loadRows(); }, [loadRows]);
+
+  useEffect(() => {
+    if (!selected) { setMomentum(null); return; }
+    setMomentumLoading(true);
+    setMomentum(null);
+    fetch(`/api/momentum?symbol=${encodeURIComponent(selected.ticker)}`)
+      .then((r) => r.json())
+      .then(setMomentum)
+      .catch(console.error)
+      .finally(() => setMomentumLoading(false));
+  }, [selected?.ticker]);
 
   async function handleEditSave(data: UpsertPosition) {
     setSavingEdit(true);
@@ -701,6 +715,131 @@ export default function PortfolioPage() {
                       <p className="text-sm font-mono font-medium mt-0.5 text-primary">{item.value}</p>
                     </div>
                   ))}
+                </div>
+
+                {/* Momentum / Market Data */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Activity className="w-3.5 h-3.5 text-muted" />
+                    <p className="text-2xs text-muted uppercase tracking-wider">Market Data</p>
+                    {momentumLoading && <Loader2 className="w-3 h-3 text-muted animate-spin ml-auto" />}
+                  </div>
+
+                  {!momentum && !momentumLoading && (
+                    <p className="text-2xs text-muted italic">No market data available for this symbol.</p>
+                  )}
+
+                  {momentum && (
+                    <div className="space-y-3">
+                      {/* 52-week range */}
+                      {momentum.fiftyTwoWeekHigh != null && momentum.fiftyTwoWeekLow != null && (
+                        <div>
+                          <div className="flex justify-between mb-1">
+                            <span className="text-2xs text-muted">52-Week Range</span>
+                            {momentum.fromHighPct != null && (
+                              <span className={`text-2xs font-mono ${momentum.fromHighPct >= -5 ? "text-gain" : momentum.fromHighPct >= -20 ? "text-warn" : "text-loss"}`}>
+                                {momentum.fromHighPct.toFixed(1)}% from high
+                              </span>
+                            )}
+                          </div>
+                          <div className="relative h-2 bg-surface-3 rounded-full">
+                            {(() => {
+                              const lo = momentum.fiftyTwoWeekLow!;
+                              const hi = momentum.fiftyTwoWeekHigh!;
+                              const cur = selected.currentPrice;
+                              const pct = Math.max(0, Math.min(100, ((cur - lo) / (hi - lo)) * 100));
+                              return (
+                                <>
+                                  <div className="absolute inset-0 rounded-full bg-gradient-to-r from-loss/30 via-warn/30 to-gain/30" />
+                                  <div
+                                    className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-accent border-2 border-white shadow-sm"
+                                    style={{ left: `calc(${pct}% - 6px)` }}
+                                  />
+                                </>
+                              );
+                            })()}
+                          </div>
+                          <div className="flex justify-between mt-1">
+                            <span className="text-2xs font-mono text-loss">{momentum.fiftyTwoWeekLow.toFixed(2)}</span>
+                            <span className="text-2xs font-mono text-gain">{momentum.fiftyTwoWeekHigh.toFixed(2)}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* RSI */}
+                      {momentum.rsi14 != null && (
+                        <div>
+                          <div className="flex justify-between mb-1">
+                            <span className="text-2xs text-muted">RSI (14)</span>
+                            <span className={`text-2xs font-mono font-semibold ${
+                              momentum.rsi14 >= 70 ? "text-loss" : momentum.rsi14 <= 30 ? "text-gain" : "text-primary"
+                            }`}>
+                              {momentum.rsi14.toFixed(1)}
+                              {momentum.rsi14 >= 70 ? " · overbought" : momentum.rsi14 <= 30 ? " · oversold" : ""}
+                            </span>
+                          </div>
+                          <div className="h-1.5 bg-surface-3 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full ${momentum.rsi14 >= 70 ? "bg-loss" : momentum.rsi14 <= 30 ? "bg-gain" : "bg-accent"}`}
+                              style={{ width: `${momentum.rsi14}%` }}
+                            />
+                          </div>
+                          <div className="flex justify-between mt-0.5">
+                            <span className="text-2xs text-gain">30</span>
+                            <span className="text-2xs text-muted">50</span>
+                            <span className="text-2xs text-loss">70</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Volume */}
+                      {momentum.volume != null && momentum.avgVolume != null && (
+                        <div className="flex justify-between items-center py-1.5 border-b border-border">
+                          <span className="text-xs text-muted">Volume vs Avg</span>
+                          <div className="text-right">
+                            <span className={`text-xs font-mono font-medium ${momentum.volume > momentum.avgVolume ? "text-accent" : "text-primary"}`}>
+                              {(momentum.volume / 1_000_000).toFixed(2)}M
+                            </span>
+                            <span className="text-2xs text-muted ml-1">
+                              ({((momentum.volume / momentum.avgVolume) * 100).toFixed(0)}% of avg)
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Moving averages */}
+                      {(momentum.ma50 != null || momentum.ma200 != null) && (
+                        <div className="flex gap-2">
+                          {momentum.ma50 != null && (
+                            <div className={`flex-1 rounded-lg px-3 py-2 border text-center ${
+                              selected.currentPrice >= momentum.ma50
+                                ? "bg-gain/10 border-gain/30"
+                                : "bg-loss/10 border-loss/30"
+                            }`}>
+                              <p className="text-2xs text-muted mb-0.5">50-day MA</p>
+                              <p className="text-xs font-mono text-primary">{momentum.ma50.toFixed(2)}</p>
+                              <p className={`text-2xs font-medium mt-0.5 ${selected.currentPrice >= momentum.ma50 ? "text-gain" : "text-loss"}`}>
+                                {selected.currentPrice >= momentum.ma50 ? "▲ Above" : "▼ Below"}
+                              </p>
+                            </div>
+                          )}
+                          {momentum.ma200 != null && (
+                            <div className={`flex-1 rounded-lg px-3 py-2 border text-center ${
+                              selected.currentPrice >= momentum.ma200
+                                ? "bg-gain/10 border-gain/30"
+                                : "bg-loss/10 border-loss/30"
+                            }`}>
+                              <p className="text-2xs text-muted mb-0.5">200-day MA</p>
+                              <p className="text-xs font-mono text-primary">{momentum.ma200.toFixed(2)}</p>
+                              <p className={`text-2xs font-medium mt-0.5 ${selected.currentPrice >= momentum.ma200 ? "text-gain" : "text-loss"}`}>
+                                {selected.currentPrice >= momentum.ma200 ? "▲ Above" : "▼ Below"}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2">

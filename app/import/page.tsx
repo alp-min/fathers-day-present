@@ -118,36 +118,110 @@ interface ManualFormProps {
   saving: boolean;
 }
 
+type EntryMode = "simple" | "detailed";
+
 function ManualForm({ initial, onSave, onCancel, saving }: ManualFormProps) {
+  // Default to detailed when editing an existing position
+  const [mode, setMode] = useState<EntryMode>(initial ? "detailed" : "simple");
+
+  // Simple mode
+  const [notional, setNotional] = useState("");
+  const [fetchedPrice, setFetchedPrice] = useState<number | null>(null);
+  const [fetchingPrice, setFetchingPrice] = useState(false);
+
+  // Shared fields
   const [ticker, setTicker] = useState(initial?.ticker ?? "");
   const [name, setName] = useState(initial?.name ?? "");
+  const [currency, setCurrency] = useState(initial?.currency ?? "GBP");
+  const [account, setAccount] = useState(initial?.account ?? "General");
+  const [assetClass, setAssetClass] = useState(initial?.asset_class ?? "stock");
+
+  // Detailed-only fields
   const [quantity, setQuantity] = useState(initial?.quantity != null ? String(initial.quantity) : "");
   const [avgCost, setAvgCost] = useState(initial?.avg_cost != null ? String(initial.avg_cost) : "");
   const [currentPrice, setCurrentPrice] = useState(initial?.current_price != null ? String(initial.current_price) : "");
-  const [currency, setCurrency] = useState(initial?.currency ?? "GBP");
   const [direction, setDirection] = useState<"long" | "short">((initial?.direction as "long" | "short") ?? "long");
-  const [account, setAccount] = useState(initial?.account ?? "General");
-  const [assetClass, setAssetClass] = useState(initial?.asset_class ?? "stock");
   const [country, setCountry] = useState(initial?.country ?? "United States");
   const [beta, setBeta] = useState(initial?.beta != null ? String(initial.beta) : "");
   const [notes, setNotes] = useState(initial?.notes ?? "");
 
+  async function lookupPrice() {
+    const t = ticker.trim().toUpperCase();
+    if (!t) return;
+    setFetchingPrice(true);
+    setFetchedPrice(null);
+    try {
+      const res = await fetch(`/api/prices?symbols=${encodeURIComponent(t)}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      const price = data.prices?.[t]?.price;
+      if (price && price > 0) {
+        setFetchedPrice(price);
+        // Pre-fill detailed fields too
+        setCurrentPrice(String(price));
+        if (!avgCost) setAvgCost(String(price));
+        if (data.prices[t]?.shortName && !name) setName(data.prices[t].shortName);
+      }
+    } catch {
+      // silently fail — user can still save without a price
+    } finally {
+      setFetchingPrice(false);
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    await onSave({
-      ticker: ticker.trim().toUpperCase(),
-      name: name.trim() || ticker.trim().toUpperCase(),
-      quantity: parseFloat(quantity),
-      avg_cost: parseFloat(avgCost),
-      current_price: parseFloat(currentPrice),
-      currency,
-      direction,
-      account: account.trim() || "General",
-      asset_class: assetClass,
-      country: country.trim() || "United States",
-      beta: beta ? parseFloat(beta) : null,
-      notes: notes.trim() || null,
-    });
+    if (mode === "simple") {
+      const notionalNum = parseFloat(notional);
+      if (isNaN(notionalNum) || notionalNum <= 0) return;
+      if (fetchedPrice && fetchedPrice > 0) {
+        await onSave({
+          ticker: ticker.trim().toUpperCase(),
+          name: name.trim() || ticker.trim().toUpperCase(),
+          quantity: parseFloat((notionalNum / fetchedPrice).toFixed(6)),
+          avg_cost: fetchedPrice,
+          current_price: fetchedPrice,
+          currency,
+          direction: "long",
+          account: account.trim() || "General",
+          asset_class: assetClass,
+          country: "United States",
+          beta: null,
+          notes: null,
+        });
+      } else {
+        // No price fetched — store notional as both cost and price, quantity = 1
+        await onSave({
+          ticker: ticker.trim().toUpperCase(),
+          name: name.trim() || ticker.trim().toUpperCase(),
+          quantity: 1,
+          avg_cost: notionalNum,
+          current_price: notionalNum,
+          currency,
+          direction: "long",
+          account: account.trim() || "General",
+          asset_class: assetClass,
+          country: "United States",
+          beta: null,
+          notes: null,
+        });
+      }
+    } else {
+      await onSave({
+        ticker: ticker.trim().toUpperCase(),
+        name: name.trim() || ticker.trim().toUpperCase(),
+        quantity: parseFloat(quantity),
+        avg_cost: parseFloat(avgCost),
+        current_price: parseFloat(currentPrice),
+        currency,
+        direction,
+        account: account.trim() || "General",
+        asset_class: assetClass,
+        country: country.trim() || "United States",
+        beta: beta ? parseFloat(beta) : null,
+        notes: notes.trim() || null,
+      });
+    }
   }
 
   const inputClass =
@@ -155,35 +229,39 @@ function ManualForm({ initial, onSave, onCancel, saving }: ManualFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {/* Direction */}
-      <div>
-        <label className="text-2xs text-muted uppercase tracking-wider block mb-1.5">Direction</label>
-        <div className="flex gap-2">
-          {(["long", "short"] as const).map((d) => (
+      {/* Mode toggle */}
+      {!initial && (
+        <div className="flex bg-surface-2 rounded-lg p-1 gap-1 border border-border">
+          {(["simple", "detailed"] as EntryMode[]).map((m) => (
             <button
-              key={d}
+              key={m}
               type="button"
-              onClick={() => setDirection(d)}
-              className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all border ${
-                direction === d
-                  ? d === "long"
-                    ? "bg-gain/20 border-gain/40 text-gain"
-                    : "bg-loss/20 border-loss/40 text-loss"
-                  : "bg-surface border-border text-muted hover:text-primary"
+              onClick={() => setMode(m)}
+              className={`flex-1 py-1.5 rounded-md text-xs font-medium transition-all ${
+                mode === m
+                  ? "bg-accent text-white shadow-sm"
+                  : "text-muted hover:text-primary"
               }`}
             >
-              {d === "long" ? "▲ Long" : "▼ Short"}
+              {m === "simple" ? "Simple (notional)" : "Detailed (qty + price)"}
             </button>
           ))}
         </div>
-      </div>
+      )}
 
-      {/* Ticker + Name */}
+      {/* Ticker + Name — always shown */}
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="text-2xs text-muted uppercase tracking-wider block mb-1.5">Ticker *</label>
-          <input value={ticker} onChange={(e) => setTicker(e.target.value)} placeholder="AAPL" required
-            className={`${inputClass} font-mono uppercase`} autoFocus={!initial} />
+          <input
+            value={ticker}
+            onChange={(e) => { setTicker(e.target.value); setFetchedPrice(null); }}
+            onBlur={mode === "simple" ? lookupPrice : undefined}
+            placeholder="AAPL"
+            required
+            className={`${inputClass} font-mono uppercase`}
+            autoFocus={!initial}
+          />
         </div>
         <div>
           <label className="text-2xs text-muted uppercase tracking-wider block mb-1.5">Company Name</label>
@@ -191,72 +269,164 @@ function ManualForm({ initial, onSave, onCancel, saving }: ManualFormProps) {
         </div>
       </div>
 
-      {/* Qty / Cost / Price */}
-      <div className="grid grid-cols-3 gap-3">
-        <div>
-          <label className="text-2xs text-muted uppercase tracking-wider block mb-1.5">Quantity *</label>
-          <input type="number" step="any" min="0" value={quantity} onChange={(e) => setQuantity(e.target.value)}
-            placeholder="100" required className={`${inputClass} font-mono`} />
-        </div>
-        <div>
-          <label className="text-2xs text-muted uppercase tracking-wider block mb-1.5">Avg Cost *</label>
-          <input type="number" step="any" min="0" value={avgCost} onChange={(e) => setAvgCost(e.target.value)}
-            placeholder="145.20" required className={`${inputClass} font-mono`} />
-        </div>
-        <div>
-          <label className="text-2xs text-muted uppercase tracking-wider block mb-1.5">Current Price *</label>
-          <input type="number" step="any" min="0" value={currentPrice} onChange={(e) => setCurrentPrice(e.target.value)}
-            placeholder="189.50" required className={`${inputClass} font-mono`} />
-        </div>
-      </div>
+      {/* ── SIMPLE MODE ── */}
+      {mode === "simple" && (
+        <>
+          <div>
+            <label className="text-2xs text-muted uppercase tracking-wider block mb-1.5">
+              Total Value Invested *
+            </label>
+            <div className="relative">
+              <input
+                type="number"
+                step="any"
+                min="0"
+                value={notional}
+                onChange={(e) => setNotional(e.target.value)}
+                placeholder="e.g. 5000"
+                required
+                className={`${inputClass} font-mono pr-20`}
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted font-mono">{currency}</span>
+            </div>
+            {fetchingPrice && (
+              <p className="text-2xs text-muted mt-1 flex items-center gap-1">
+                <Loader2 className="w-3 h-3 animate-spin" /> Looking up live price…
+              </p>
+            )}
+            {fetchedPrice && !fetchingPrice && notional && (
+              <p className="text-2xs text-gain mt-1">
+                Live price: {fetchedPrice.toFixed(4)} · {(parseFloat(notional) / fetchedPrice).toFixed(4)} units
+              </p>
+            )}
+            {!fetchedPrice && !fetchingPrice && ticker && (
+              <p className="text-2xs text-muted mt-1">
+                Tab away from Ticker to auto-fetch the live price, or{" "}
+                <button type="button" onClick={lookupPrice} className="text-accent underline">fetch now</button>.
+              </p>
+            )}
+          </div>
 
-      {/* Currency / Asset Class / Beta */}
-      <div className="grid grid-cols-3 gap-3">
-        <div>
-          <label className="text-2xs text-muted uppercase tracking-wider block mb-1.5">Currency</label>
-          <select value={currency} onChange={(e) => setCurrency(e.target.value)} className={inputClass}>
-            {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="text-2xs text-muted uppercase tracking-wider block mb-1.5">Asset Class</label>
-          <select value={assetClass} onChange={(e) => setAssetClass(e.target.value)} className={inputClass}>
-            {ASSET_CLASSES.map((a) => <option key={a} value={a}>{a.charAt(0).toUpperCase() + a.slice(1)}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="text-2xs text-muted uppercase tracking-wider block mb-1.5">Beta</label>
-          <input type="number" step="0.01" value={beta} onChange={(e) => setBeta(e.target.value)}
-            placeholder="e.g. 1.25" className={`${inputClass} font-mono`} />
-        </div>
-      </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-2xs text-muted uppercase tracking-wider block mb-1.5">Currency</label>
+              <select value={currency} onChange={(e) => setCurrency(e.target.value)} className={inputClass}>
+                {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-2xs text-muted uppercase tracking-wider block mb-1.5">Asset Class</label>
+              <select value={assetClass} onChange={(e) => setAssetClass(e.target.value)} className={inputClass}>
+                {ASSET_CLASSES.map((a) => <option key={a} value={a}>{a.charAt(0).toUpperCase() + a.slice(1)}</option>)}
+              </select>
+            </div>
+          </div>
 
-      {/* Account / Country */}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="text-2xs text-muted uppercase tracking-wider block mb-1.5">Account</label>
-          <input list="accounts-list-form" value={account} onChange={(e) => setAccount(e.target.value)}
-            placeholder="General" className={inputClass} />
-          <datalist id="accounts-list-form">
-            {ACCOUNTS.map((a) => <option key={a} value={a} />)}
-          </datalist>
-        </div>
-        <div>
-          <label className="text-2xs text-muted uppercase tracking-wider block mb-1.5">Country / Region</label>
-          <input list="country-list-form" value={country} onChange={(e) => setCountry(e.target.value)}
-            placeholder="United States" className={inputClass} />
-          <datalist id="country-list-form">
-            {COUNTRIES.map((c) => <option key={c} value={c} />)}
-          </datalist>
-        </div>
-      </div>
+          <div>
+            <label className="text-2xs text-muted uppercase tracking-wider block mb-1.5">Account</label>
+            <input list="accounts-list-simple" value={account} onChange={(e) => setAccount(e.target.value)}
+              placeholder="General" className={inputClass} />
+            <datalist id="accounts-list-simple">
+              {ACCOUNTS.map((a) => <option key={a} value={a} />)}
+            </datalist>
+          </div>
+        </>
+      )}
 
-      {/* Notes */}
-      <div>
-        <label className="text-2xs text-muted uppercase tracking-wider block mb-1.5">Notes</label>
-        <input value={notes ?? ""} onChange={(e) => setNotes(e.target.value)}
-          placeholder="Optional notes..." className={inputClass} />
-      </div>
+      {/* ── DETAILED MODE ── */}
+      {mode === "detailed" && (
+        <>
+          {/* Direction */}
+          <div>
+            <label className="text-2xs text-muted uppercase tracking-wider block mb-1.5">Direction</label>
+            <div className="flex gap-2">
+              {(["long", "short"] as const).map((d) => (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => setDirection(d)}
+                  className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all border ${
+                    direction === d
+                      ? d === "long"
+                        ? "bg-gain/20 border-gain/40 text-gain"
+                        : "bg-loss/20 border-loss/40 text-loss"
+                      : "bg-surface border-border text-muted hover:text-primary"
+                  }`}
+                >
+                  {d === "long" ? "▲ Long" : "▼ Short"}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Qty / Cost / Price */}
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="text-2xs text-muted uppercase tracking-wider block mb-1.5">Quantity *</label>
+              <input type="number" step="any" min="0" value={quantity} onChange={(e) => setQuantity(e.target.value)}
+                placeholder="100" required className={`${inputClass} font-mono`} />
+            </div>
+            <div>
+              <label className="text-2xs text-muted uppercase tracking-wider block mb-1.5">Avg Cost *</label>
+              <input type="number" step="any" min="0" value={avgCost} onChange={(e) => setAvgCost(e.target.value)}
+                placeholder="145.20" required className={`${inputClass} font-mono`} />
+            </div>
+            <div>
+              <label className="text-2xs text-muted uppercase tracking-wider block mb-1.5">Current Price *</label>
+              <input type="number" step="any" min="0" value={currentPrice} onChange={(e) => setCurrentPrice(e.target.value)}
+                placeholder="189.50" required className={`${inputClass} font-mono`} />
+            </div>
+          </div>
+
+          {/* Currency / Asset Class / Beta */}
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="text-2xs text-muted uppercase tracking-wider block mb-1.5">Currency</label>
+              <select value={currency} onChange={(e) => setCurrency(e.target.value)} className={inputClass}>
+                {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-2xs text-muted uppercase tracking-wider block mb-1.5">Asset Class</label>
+              <select value={assetClass} onChange={(e) => setAssetClass(e.target.value)} className={inputClass}>
+                {ASSET_CLASSES.map((a) => <option key={a} value={a}>{a.charAt(0).toUpperCase() + a.slice(1)}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-2xs text-muted uppercase tracking-wider block mb-1.5">Beta</label>
+              <input type="number" step="0.01" value={beta} onChange={(e) => setBeta(e.target.value)}
+                placeholder="e.g. 1.25" className={`${inputClass} font-mono`} />
+            </div>
+          </div>
+
+          {/* Account / Country */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-2xs text-muted uppercase tracking-wider block mb-1.5">Account</label>
+              <input list="accounts-list-form" value={account} onChange={(e) => setAccount(e.target.value)}
+                placeholder="General" className={inputClass} />
+              <datalist id="accounts-list-form">
+                {ACCOUNTS.map((a) => <option key={a} value={a} />)}
+              </datalist>
+            </div>
+            <div>
+              <label className="text-2xs text-muted uppercase tracking-wider block mb-1.5">Country / Region</label>
+              <input list="country-list-form" value={country} onChange={(e) => setCountry(e.target.value)}
+                placeholder="United States" className={inputClass} />
+              <datalist id="country-list-form">
+                {COUNTRIES.map((c) => <option key={c} value={c} />)}
+              </datalist>
+            </div>
+          </div>
+
+          {/* Notes */}
+          <div>
+            <label className="text-2xs text-muted uppercase tracking-wider block mb-1.5">Notes</label>
+            <input value={notes ?? ""} onChange={(e) => setNotes(e.target.value)}
+              placeholder="Optional notes..." className={inputClass} />
+          </div>
+        </>
+      )}
 
       <div className="flex justify-end gap-3 pt-2 border-t border-border">
         <Button type="button" variant="ghost" size="sm" onClick={onCancel}>Cancel</Button>

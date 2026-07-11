@@ -13,31 +13,87 @@ export type PriceQuote = {
 
 const BASE = "https://api.finage.co.uk";
 
-type Market = "us" | "uk" | "hk" | "eu";
+const COMMODITY_SYMBOLS = new Set([
+  "XAUUSD", "XAGUSD", "XPTUSD", "XPDUSD",
+  "USOIL", "UKOIL", "BRENT", "WTI", "NGAS",
+  "COFFEE", "SUGAR", "COCOA", "COTTON",
+  "CORN", "WHEAT", "SOYBEAN", "RICE",
+  "COPPER", "ALUMINIUM", "ZINC", "NICKEL", "LEAD",
+]);
 
-function classifySymbol(sym: string): { clean: string; market: Market; currency: string } {
+const FIAT_CURRENCIES = new Set([
+  "USD","EUR","GBP","JPY","CHF","AUD","CAD","NZD",
+  "SEK","NOK","DKK","SGD","HKD","CNY","CNH","MXN",
+  "ZAR","TRY","BRL","INR","KRW","THB","PLN","CZK","HUF",
+]);
+
+type AssetClass = "forex" | "commodity" | "crypto" | "us" | "uk" | "hk" | "eu";
+
+interface Classified {
+  raw: string;
+  clean: string;
+  assetClass: AssetClass;
+  currency: string;
+}
+
+function classifySymbol(sym: string): Classified {
   const upper = sym.toUpperCase();
-  if (upper.endsWith(".L")) return { clean: upper.replace(/\.L$/, ""), market: "uk", currency: "GBp" };
-  if (upper.endsWith(".HK")) return { clean: upper.replace(/\.HK$/, ""), market: "hk", currency: "HKD" };
+
+  if (COMMODITY_SYMBOLS.has(upper)) {
+    return { raw: upper, clean: upper, assetClass: "commodity", currency: "USD" };
+  }
+
+  if (
+    (upper.endsWith("USDT") || upper.endsWith("USDC")) ||
+    (upper.endsWith("USD") && upper.length > 6) ||
+    /^(BTC|ETH|BNB|SOL|XRP|ADA|DOGE|DOT|MATIC|AVAX|LINK|LTC|BCH|UNI|ATOM)/.test(upper)
+  ) {
+    return { raw: upper, clean: upper, assetClass: "crypto", currency: "USD" };
+  }
+
+  if (upper.length === 6) {
+    const base = upper.slice(0, 3);
+    const quote = upper.slice(3, 6);
+    if (FIAT_CURRENCIES.has(base) && FIAT_CURRENCIES.has(quote)) {
+      return { raw: upper, clean: upper, assetClass: "forex", currency: quote };
+    }
+  }
+
+  if (/^[A-Z]{3}\/[A-Z]{3}$/.test(upper)) {
+    const [base, quote] = upper.split("/");
+    if (FIAT_CURRENCIES.has(base) && FIAT_CURRENCIES.has(quote)) {
+      return { raw: upper, clean: base + quote, assetClass: "forex", currency: quote };
+    }
+  }
+
+  if (upper.endsWith(".L")) return { raw: upper, clean: upper.replace(/\.L$/, ""), assetClass: "uk", currency: "GBp" };
+  if (upper.endsWith(".HK")) return { raw: upper, clean: upper.replace(/\.HK$/, ""), assetClass: "hk", currency: "HKD" };
   if (/\.(PA|DE|AMS|AS|MI|MC|BR|VX|ST|CO|OL|HE)$/i.test(upper)) {
-    return { clean: upper, market: "eu", currency: "EUR" };
+    return { raw: upper, clean: upper, assetClass: "eu", currency: "EUR" };
   }
-  return { clean: upper, market: "us", currency: "USD" };
+
+  return { raw: upper, clean: upper, assetClass: "us", currency: "USD" };
 }
 
-function marketPath(market: Market) {
-  switch (market) {
-    case "uk": return "uk-stock";
-    case "hk": return "hk-stock";
-    default:   return "stock";
+function lastPath(ac: AssetClass): string {
+  switch (ac) {
+    case "forex":     return "last/forex";
+    case "commodity": return "last/commodity";
+    case "crypto":    return "last/crypto";
+    case "uk":        return "last/uk-stock";
+    case "hk":        return "last/hk-stock";
+    default:          return "last/stock";
   }
 }
 
-function prevClosePath(market: Market) {
-  switch (market) {
-    case "uk": return "agg/uk-stock/prev-close";
-    case "hk": return "agg/hk-stock/prev-close";
-    default:   return "agg/stock/prev-close";
+function prevClosePath(ac: AssetClass): string {
+  switch (ac) {
+    case "forex":     return "agg/forex/prev-close";
+    case "commodity": return "agg/commodity/prev-close";
+    case "crypto":    return "agg/crypto/prev-close";
+    case "uk":        return "agg/uk-stock/prev-close";
+    case "hk":        return "agg/hk-stock/prev-close";
+    default:          return "agg/stock/prev-close";
   }
 }
 
@@ -46,7 +102,9 @@ interface FinageLastResponse {
   ask?: number;
   bid?: number;
   price?: number;
+  rate?: number;
   timestamp?: number;
+  [k: string]: unknown;
 }
 
 interface FinagePrevCloseResponse {
@@ -57,6 +115,7 @@ interface FinagePrevCloseResponse {
   close?: number;
   volume?: number;
   timestamp?: number;
+  [k: string]: unknown;
 }
 
 export async function GET(req: NextRequest) {
@@ -71,17 +130,17 @@ export async function GET(req: NextRequest) {
   }
 
   const symbolList = symbols.split(",").map((s) => s.trim()).filter(Boolean);
-  const classified = symbolList.map((s) => ({ raw: s.toUpperCase(), ...classifySymbol(s) }));
+  const classified = symbolList.map(classifySymbol);
 
-  const fetchPair = async (entry: ReturnType<typeof classifySymbol> & { raw: string }) => {
-    const path = marketPath(entry.market);
-    const pcPath = prevClosePath(entry.market);
+  const fetchPair = async (entry: Classified) => {
     const sym = encodeURIComponent(entry.clean);
     const key = `apikey=${apiKey}`;
 
     const [lastRes, prevRes] = await Promise.allSettled([
-      fetch(`${BASE}/last/${path}/${sym}?${key}`).then((r) => r.json() as Promise<FinageLastResponse>),
-      fetch(`${BASE}/${pcPath}/${sym}?${key}`).then((r) => r.json() as Promise<FinagePrevCloseResponse>),
+      fetch(`${BASE}/${lastPath(entry.assetClass)}/${sym}?${key}`)
+        .then((r) => r.json() as Promise<FinageLastResponse>),
+      fetch(`${BASE}/${prevClosePath(entry.assetClass)}/${sym}?${key}`)
+        .then((r) => r.json() as Promise<FinagePrevCloseResponse>),
     ]);
 
     return { entry, lastRes, prevRes };
@@ -103,18 +162,25 @@ export async function GET(req: NextRequest) {
       continue;
     }
 
-    const price = last.price ?? (last.ask != null && last.bid != null ? (last.ask + last.bid) / 2 : last.ask ?? null);
-    if (price == null || isNaN(price) || price <= 0) {
+    const price =
+      last.price ??
+      last.rate ??
+      (last.ask != null && last.bid != null ? (last.ask + last.bid) / 2 : null) ??
+      last.ask ??
+      null;
+
+    if (price == null || isNaN(Number(price)) || Number(price) <= 0) {
       console.warn("[prices] invalid price for", entry.raw, last);
       continue;
     }
 
-    const prevClose = prev?.close ?? 0;
-    const change = prevClose > 0 ? price - prevClose : 0;
+    const numPrice = Number(price);
+    const prevClose = prev?.close != null ? Number(prev.close) : 0;
+    const change = prevClose > 0 ? numPrice - prevClose : 0;
     const changePct = prevClose > 0 ? (change / prevClose) * 100 : 0;
 
     prices[entry.raw] = {
-      price,
+      price: numPrice,
       change,
       changePct,
       prevClose,

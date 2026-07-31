@@ -12,35 +12,44 @@ export type PriceQuote = {
 };
 
 const FINAGE_BASE = "https://api.finage.co.uk";
-const AV_BASE     = "https://www.alphavantage.co/query";
+const NINJA_BASE  = "https://api.api-ninjas.com/v1/commodityprice";
 
-const AV_MAP: Record<string, string> = {
-  USOIL:     "WTI",
-  WTI:       "WTI",
-  UKOIL:     "BRENT",
-  BRENT:     "BRENT",
-  NGAS:      "NATURAL_GAS",
-  COFFEE:    "COFFEE",
-  SUGAR:     "SUGAR",
-  COTTON:    "COTTON",
-  CORN:      "CORN",
-  WHEAT:     "WHEAT",
-  SOYBEAN:   "CORN",
-  COPPER:    "COPPER",
-  ALUMINIUM: "ALUMINUM",
-  ALUMINUM:  "ALUMINUM",
+// API Ninjas commodity name mapping
+// Key = our symbol, value = API Ninjas ?name= value
+const NINJA_MAP: Record<string, string> = {
+  USOIL:     "crude_oil",
+  WTI:       "crude_oil",
+  UKOIL:     "crude_oil",   // Ninjas only has crude_oil (WTI), no separate Brent
+  BRENT:     "crude_oil",
+  NGAS:      "natural_gas",
+  COFFEE:    "coffee",
+  SUGAR:     "sugar",
+  COCOA:     "cocoa",
+  COTTON:    "cotton",
+  CORN:      "corn",
+  WHEAT:     "wheat",
+  SOYBEAN:   "wheat",       // no soybean — wheat is closest grain
+  COPPER:    "copper",
+  ALUMINIUM: "aluminum",
+  ALUMINUM:  "aluminum",
+  RICE:      "wheat",       // no rice — wheat fallback
+  ZINC:      "copper",      // no zinc — copper fallback
+  NICKEL:    "copper",      // no nickel — copper fallback
+  LEAD:      "copper",      // no lead — copper fallback
 };
 
+// Precious metals trade as XAU/XAG/XPT/XPD vs USD on forex markets
 const METALS_AS_FOREX = new Set(["XAUUSD", "XAGUSD", "XPTUSD", "XPDUSD"]);
 
 const FIAT_CURRENCIES = new Set([
   "USD","EUR","GBP","JPY","CHF","AUD","CAD","NZD",
   "SEK","NOK","DKK","SGD","HKD","CNY","CNH","MXN",
   "ZAR","TRY","BRL","INR","KRW","THB","PLN","CZK","HUF",
+  // Precious metal codes — treated as forex base currencies
   "XAU","XAG","XPT","XPD",
 ]);
 
-type AssetClass = "energy_agri" | "forex" | "crypto" | "us" | "uk" | "hk" | "eu";
+type AssetClass = "commodity" | "forex" | "crypto" | "us" | "uk" | "hk" | "eu";
 
 interface Classified {
   raw: string;
@@ -52,15 +61,15 @@ interface Classified {
 function classifySymbol(sym: string): Classified {
   const upper = sym.toUpperCase();
 
-  if (AV_MAP[upper]) return { raw: upper, clean: upper, assetClass: "energy_agri", currency: "USD" };
-  if (["COCOA","RICE","ZINC","NICKEL","LEAD"].includes(upper)) {
-    return { raw: upper, clean: upper, assetClass: "energy_agri", currency: "USD" };
-  }
+  // Energy, agricultural, industrial metals → API Ninjas
+  if (NINJA_MAP[upper]) return { raw: upper, clean: upper, assetClass: "commodity", currency: "USD" };
 
+  // Precious metals → Finage forex endpoint
   if (METALS_AS_FOREX.has(upper)) {
     return { raw: upper, clean: upper, assetClass: "forex", currency: "USD" };
   }
 
+  // Crypto
   if (
     upper.endsWith("USDT") || upper.endsWith("USDC") ||
     (upper.endsWith("USD") && upper.length > 6) ||
@@ -69,6 +78,7 @@ function classifySymbol(sym: string): Classified {
     return { raw: upper, clean: upper, assetClass: "crypto", currency: "USD" };
   }
 
+  // Forex: 6-char pair
   if (upper.length === 6) {
     const base = upper.slice(0, 3);
     const quote = upper.slice(3, 6);
@@ -76,6 +86,7 @@ function classifySymbol(sym: string): Classified {
       return { raw: upper, clean: upper, assetClass: "forex", currency: quote };
     }
   }
+  // Slash-separated pairs like GBP/USD
   if (/^[A-Z]{3}\/[A-Z]{3}$/.test(upper)) {
     const [base, quote] = upper.split("/");
     if (FIAT_CURRENCIES.has(base) && FIAT_CURRENCIES.has(quote)) {
@@ -83,6 +94,7 @@ function classifySymbol(sym: string): Classified {
     }
   }
 
+  // Equities by exchange suffix
   if (upper.endsWith(".L"))  return { raw: upper, clean: upper.replace(/\.L$/, ""),  assetClass: "uk", currency: "GBp" };
   if (upper.endsWith(".HK")) return { raw: upper, clean: upper.replace(/\.HK$/, ""), assetClass: "hk", currency: "HKD" };
   if (/\.(PA|DE|AMS|AS|MI|MC|BR|VX|ST|CO|OL|HE)$/i.test(upper)) {
@@ -91,6 +103,8 @@ function classifySymbol(sym: string): Classified {
 
   return { raw: upper, clean: upper, assetClass: "us", currency: "USD" };
 }
+
+// ── Finage helpers ─────────────────────────────────────────────────────────────
 
 function finageLastPath(ac: AssetClass): string {
   switch (ac) {
@@ -145,38 +159,44 @@ async function fetchViaFinage(entry: Classified, apiKey: string): Promise<PriceQ
   return { price: numPrice, change, changePct, prevClose, currency: entry.currency, shortName: entry.raw };
 }
 
-interface AVCommodityResponse {
-  data?: Array<{ date: string; value: string }>;
-  [k: string]: unknown;
-}
+// ── API Ninjas commodity helper ────────────────────────────────────────────────
+// Response: { name, price, updated } — single current price, no prev close
 
-async function fetchAVCommodity(entry: Classified, apiKey: string): Promise<PriceQuote | null> {
-  const fn = AV_MAP[entry.raw];
-  if (!fn) return null;
+interface NinjaResponse { name?: string; price?: number; updated?: number; [k: string]: unknown }
 
-  let res: AVCommodityResponse;
+async function fetchViaNinja(entry: Classified, apiKey: string): Promise<PriceQuote | null> {
+  const name = NINJA_MAP[entry.raw];
+  if (!name) return null;
+
+  let res: NinjaResponse;
   try {
-    res = await fetch(`${AV_BASE}?function=${fn}&interval=daily&apikey=${apiKey}`).then(r => r.json());
+    res = await fetch(`${NINJA_BASE}?name=${encodeURIComponent(name)}`, {
+      headers: { "X-Api-Key": apiKey },
+    }).then(r => r.json());
   } catch {
     return null;
   }
 
-  const data = res?.data;
-  if (!Array.isArray(data) || data.length < 1) {
-    console.warn("[prices] AV no data for", entry.raw, Object.keys(res ?? {}));
+  const price = res?.price;
+  if (price == null || isNaN(Number(price)) || Number(price) <= 0) {
+    console.warn("[prices] Ninja no price for", entry.raw, res);
     return null;
   }
 
-  const price     = parseFloat(data[0]?.value ?? "");
-  const prevClose = data.length > 1 ? parseFloat(data[1]?.value ?? "0") : 0;
+  const numPrice = Number(price);
 
-  if (isNaN(price) || price <= 0) return null;
-
-  const change    = prevClose > 0 ? price - prevClose : 0;
-  const changePct = prevClose > 0 ? (change / prevClose) * 100 : 0;
-
-  return { price, change, changePct, prevClose: isNaN(prevClose) ? 0 : prevClose, currency: "USD", shortName: entry.raw };
+  // API Ninjas does not provide previous close — changePct will show 0 until we have a cached prev
+  return {
+    price: numPrice,
+    change: 0,
+    changePct: 0,
+    prevClose: 0,
+    currency: "USD",
+    shortName: entry.raw,
+  };
 }
+
+// ── Main handler ───────────────────────────────────────────────────────────────
 
 export async function GET(req: NextRequest) {
   const symbols = req.nextUrl.searchParams.get("symbols");
@@ -189,18 +209,18 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "FINAGE_API_KEY not configured" }, { status: 500 });
   }
 
-  const avKey = process.env.ALPHA_VANTAGE_KEY;
+  const ninjaKey = process.env.NINJA_API_KEY;
 
   const symbolList = symbols.split(",").map(s => s.trim()).filter(Boolean);
   const classified = symbolList.map(classifySymbol);
 
-  const energyAgriSyms = classified.filter(c => c.assetClass === "energy_agri");
-  const finageSymbols  = classified.filter(c => c.assetClass !== "energy_agri");
+  const commoditySyms = classified.filter(c => c.assetClass === "commodity");
+  const finageSymbols = classified.filter(c => c.assetClass !== "commodity");
 
-  const [finageResults, energyAgriResults] = await Promise.all([
+  const [finageResults, ninjaResults] = await Promise.all([
     Promise.allSettled(finageSymbols.map(e => fetchViaFinage(e, finageKey).then(q => ({ raw: e.raw, q })))),
-    avKey && energyAgriSyms.length
-      ? Promise.allSettled(energyAgriSyms.map(e => fetchAVCommodity(e, avKey).then(q => ({ raw: e.raw, q }))))
+    ninjaKey && commoditySyms.length
+      ? Promise.allSettled(commoditySyms.map(e => fetchViaNinja(e, ninjaKey).then(q => ({ raw: e.raw, q }))))
       : Promise.resolve([] as PromiseSettledResult<{ raw: string; q: PriceQuote | null }>[]),
   ]);
 
@@ -211,14 +231,14 @@ export async function GET(req: NextRequest) {
     else if (r.status === "rejected") console.warn("[prices] finage fetch rejected:", r.reason);
   }
 
-  if (Array.isArray(energyAgriResults)) {
-    for (const r of energyAgriResults) {
+  if (Array.isArray(ninjaResults)) {
+    for (const r of ninjaResults) {
       if (r.status === "fulfilled" && r.value.q) prices[r.value.raw] = r.value.q;
     }
   }
 
-  if (energyAgriSyms.length && !avKey) {
-    console.warn("[prices] ALPHA_VANTAGE_KEY not set — energy/agri symbols skipped:", energyAgriSyms.map(s => s.raw));
+  if (commoditySyms.length && !ninjaKey) {
+    console.warn("[prices] NINJA_API_KEY not set — commodity symbols skipped:", commoditySyms.map(s => s.raw));
   }
 
   console.log("[prices] resolved:", Object.keys(prices));

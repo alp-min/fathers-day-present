@@ -14,28 +14,28 @@ export type PriceQuote = {
 const FINAGE_BASE = "https://api.finage.co.uk";
 const NINJA_BASE  = "https://api.api-ninjas.com/v1/commodityprice";
 
-// API Ninjas commodity name mapping
 // Key = our symbol, value = API Ninjas ?name= value
 const NINJA_MAP: Record<string, string> = {
-  USOIL:     "crude_oil",
-  WTI:       "crude_oil",
-  UKOIL:     "crude_oil",   // Ninjas only has crude_oil (WTI), no separate Brent
-  BRENT:     "crude_oil",
-  NGAS:      "natural_gas",
   COFFEE:    "coffee",
-  SUGAR:     "sugar",
   COCOA:     "cocoa",
-  COTTON:    "cotton",
+  SUGAR:     "sugar",
   CORN:      "corn",
   WHEAT:     "wheat",
-  SOYBEAN:   "wheat",       // no soybean — wheat is closest grain
+  COTTON:    "cotton",
+  USOIL:     "crude_oil",
+  WTI:       "crude_oil",
+  UKOIL:     "brent_crude_oil",
+  BRENT:     "brent_crude_oil",
+  NGAS:      "natural_gas",
   COPPER:    "copper",
   ALUMINIUM: "aluminum",
   ALUMINUM:  "aluminum",
-  RICE:      "wheat",       // no rice — wheat fallback
-  ZINC:      "copper",      // no zinc — copper fallback
-  NICKEL:    "copper",      // no nickel — copper fallback
-  LEAD:      "copper",      // no lead — copper fallback
+  // Best-effort fallbacks for symbols Ninjas doesn't have directly
+  SOYBEAN:   "corn",
+  RICE:      "wheat",
+  ZINC:      "copper",
+  NICKEL:    "copper",
+  LEAD:      "copper",
 };
 
 // Precious metals trade as XAU/XAG/XPT/XPD vs USD on forex markets
@@ -45,7 +45,6 @@ const FIAT_CURRENCIES = new Set([
   "USD","EUR","GBP","JPY","CHF","AUD","CAD","NZD",
   "SEK","NOK","DKK","SGD","HKD","CNY","CNH","MXN",
   "ZAR","TRY","BRL","INR","KRW","THB","PLN","CZK","HUF",
-  // Precious metal codes — treated as forex base currencies
   "XAU","XAG","XPT","XPD",
 ]);
 
@@ -61,15 +60,12 @@ interface Classified {
 function classifySymbol(sym: string): Classified {
   const upper = sym.toUpperCase();
 
-  // Energy, agricultural, industrial metals → API Ninjas
   if (NINJA_MAP[upper]) return { raw: upper, clean: upper, assetClass: "commodity", currency: "USD" };
 
-  // Precious metals → Finage forex endpoint
   if (METALS_AS_FOREX.has(upper)) {
     return { raw: upper, clean: upper, assetClass: "forex", currency: "USD" };
   }
 
-  // Crypto
   if (
     upper.endsWith("USDT") || upper.endsWith("USDC") ||
     (upper.endsWith("USD") && upper.length > 6) ||
@@ -78,7 +74,6 @@ function classifySymbol(sym: string): Classified {
     return { raw: upper, clean: upper, assetClass: "crypto", currency: "USD" };
   }
 
-  // Forex: 6-char pair
   if (upper.length === 6) {
     const base = upper.slice(0, 3);
     const quote = upper.slice(3, 6);
@@ -86,7 +81,6 @@ function classifySymbol(sym: string): Classified {
       return { raw: upper, clean: upper, assetClass: "forex", currency: quote };
     }
   }
-  // Slash-separated pairs like GBP/USD
   if (/^[A-Z]{3}\/[A-Z]{3}$/.test(upper)) {
     const [base, quote] = upper.split("/");
     if (FIAT_CURRENCIES.has(base) && FIAT_CURRENCIES.has(quote)) {
@@ -94,7 +88,6 @@ function classifySymbol(sym: string): Classified {
     }
   }
 
-  // Equities by exchange suffix
   if (upper.endsWith(".L"))  return { raw: upper, clean: upper.replace(/\.L$/, ""),  assetClass: "uk", currency: "GBp" };
   if (upper.endsWith(".HK")) return { raw: upper, clean: upper.replace(/\.HK$/, ""), assetClass: "hk", currency: "HKD" };
   if (/\.(PA|DE|AMS|AS|MI|MC|BR|VX|ST|CO|OL|HE)$/i.test(upper)) {
@@ -103,8 +96,6 @@ function classifySymbol(sym: string): Classified {
 
   return { raw: upper, clean: upper, assetClass: "us", currency: "USD" };
 }
-
-// ── Finage helpers ─────────────────────────────────────────────────────────────
 
 function finageLastPath(ac: AssetClass): string {
   switch (ac) {
@@ -159,9 +150,6 @@ async function fetchViaFinage(entry: Classified, apiKey: string): Promise<PriceQ
   return { price: numPrice, change, changePct, prevClose, currency: entry.currency, shortName: entry.raw };
 }
 
-// ── API Ninjas commodity helper ────────────────────────────────────────────────
-// Response: { name, price, updated } — single current price, no prev close
-
 interface NinjaResponse { name?: string; price?: number; updated?: number; [k: string]: unknown }
 
 async function fetchViaNinja(entry: Classified, apiKey: string): Promise<PriceQuote | null> {
@@ -183,11 +171,8 @@ async function fetchViaNinja(entry: Classified, apiKey: string): Promise<PriceQu
     return null;
   }
 
-  const numPrice = Number(price);
-
-  // API Ninjas does not provide previous close — changePct will show 0 until we have a cached prev
   return {
-    price: numPrice,
+    price: Number(price),
     change: 0,
     changePct: 0,
     prevClose: 0,
@@ -195,8 +180,6 @@ async function fetchViaNinja(entry: Classified, apiKey: string): Promise<PriceQu
     shortName: entry.raw,
   };
 }
-
-// ── Main handler ───────────────────────────────────────────────────────────────
 
 export async function GET(req: NextRequest) {
   const symbols = req.nextUrl.searchParams.get("symbols");
